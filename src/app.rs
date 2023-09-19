@@ -1,12 +1,13 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::format,
-    fs::File,
-    path::Path,
-};
+use std::{collections::BTreeMap, fs::File, path::Path};
+
+use egui_extras::Size;
+use egui_grid::GridBuilder;
 
 use crate::Note;
-use egui::{epaint::{ahash::HashSet, Shadow}, Color32, Layout, Rect, Sense, Style, Ui, Vec2, Stroke};
+use egui::{
+    epaint::{ahash::HashSet, Shadow},
+    Color32, FontData, FontFamily, Label, Layout, Rect, Sense, Stroke, Style, Ui, Vec2, TextStyle,
+};
 use egui_commonmark::*;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -24,6 +25,27 @@ impl MeteoraApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customize the look and feel of egui using
         // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
+
+        let mut fonts = egui::FontDefinitions::default();
+        // Install my own font (maybe supporting non-latin characters):
+
+        fonts.font_data.insert(
+            "inter".to_owned(),
+            FontData::from_static(include_bytes!("fonts/Inter-Regular.ttf")),
+        );
+
+        fonts
+            .families
+            .get_mut(&FontFamily::Proportional)
+            .unwrap()
+            .insert(0, "inter".to_owned());
+
+        cc.egui_ctx.set_fonts(fonts);
+
+
+        // let mut style= cc.egui_ctx.style();
+        // style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 100.;
+
 
         // Note that you must enable the `persistence` feature for this to work.
         if let Some(storage) = cc.storage {
@@ -107,10 +129,44 @@ impl eframe::App for MeteoraApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            if ui.button("New Note").clicked() {
-                let n = Note::new();
-                self.notes.insert(n.id, n);
-            }
+            let note_size = 100.;
+            let width = ui.available_width();
+
+            let num_columns = (width / note_size).max(1.0) as usize;
+            ui.label(format!("Cols {num_columns}, notes {}", self.notes.len()));
+
+            let mut num_notes = 0;
+            // let ordered_notes = self.notes.keys().collect::<Vec<_>>();
+
+            // ui.columns(num_columns, |columns| {
+
+            //     for (id, note) in &self.notes.clone() {
+            //         if self.active_tags.is_empty()
+            //             || note.tags.iter().any(|t| self.active_tags.contains(t))
+            //         {
+            //             // draw_note(ui, id, &mut self.notes, &mut self.active_note);
+            //         }
+            //         let column = num_notes % num_columns;
+            //             columns[column].
+            //         label(format!("Col {column}"));
+            //             draw_note(&mut columns[column], id, &mut self.notes, &mut self.active_note);
+
+            //         num_notes += 1;
+            //     }
+
+            //     // for i in 0..num_columns {
+
+            //     //     columns[i].label(format!("C {i}"));
+            //     //     if num_notes < self.notes.len() {
+            //     //         columns[i].group(|ui| {
+            //     //             // draw_note(ui, ordered_notes[num_notes], &self.notes, &mut self.active_note)
+            //     //         });
+
+            //     //     }
+
+            //     // }
+            //     // columns[1].label("Second column");
+            // });
 
             // egui::ScrollArea::horizontal().max_width(128.).show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
@@ -122,6 +178,11 @@ impl eframe::App for MeteoraApp {
                     }
                 }
             });
+
+            if ui.button("New Note").clicked() {
+                let n = Note::new();
+                self.notes.insert(n.id, n);
+            }
         });
 
         // });
@@ -199,51 +260,20 @@ fn draw_note(
     }
     let note = notes.get(note_id).unwrap();
 
-    let r = egui::Frame::canvas(&Style::default()).
-    .stroke(Stroke::NONE)
-    .shadow(Shadow::small_light())
-    
-        .fill(Color32::from_rgb(
-            note.color[0],
-            note.color[1],
-            note.color[2],
-        ))
-        .show(ui, |ui| {
+    let (rect, resp) = ui.allocate_exact_size(Vec2::splat(100.), Sense::click());
 
-            ui.vertical(|ui|{
-                // CommonMarkViewer::new("viewer").show(ui, &mut cache, &note.text);
-                ui.label(&note.text);
-    
-                if !note.depends.is_empty() {
-                    egui::CollapsingHeader::new("Linked")
-                        .id_source(note_id)
-                        .show(ui, |ui| {
-                            for i in &note.depends {
-                                draw_note(ui, i, notes, active_note)
-                            }
-                        });
-                }
-                // let (rect, resp) = ui.allocate_at_least(Vec2::new(100., 100.), Sense::click());
+    ui.painter().rect_filled(
+        rect,
+        2.2,
+        Color32::from_rgb(note.color[0], note.color[1], note.color[2]),
+    );
+    // let mut cache = CommonMarkCache::default();
+    // CommonMarkViewer::new("viewer").show(ui, &mut cache, &note.text);
 
-            });
-
-            // let mut cache = CommonMarkCache::default();
-
-        });
-
-    // ui.painter().rect_filled(
-    //     rect,
-    //     0.2,
-    //     Color32::from_rgb(note.color[0], note.color[1], note.color[2]),
-    // );
-
-    // let mut ui = ui.child_ui(rect, Layout::left_to_right(egui::Align::TOP));
-    // ui.child_ui(rect, Layout::left_to_right(egui::Align::Min));
-
-    // let r = ui.scope(|ui| {
+    ui.put(rect, egui::Label::new(&note.text));
 
     // });
-    let resp = r.response.interact(egui::Sense::click());
+    // let resp = r.response.interact(egui::Sense::click());
     if resp.clicked() {
         *active_note = Some(*note_id);
     }
