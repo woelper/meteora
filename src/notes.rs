@@ -1,4 +1,6 @@
 use std::collections::BTreeSet;
+use rand::prelude::*;
+use rand_chacha::ChaCha20Rng;
 
 #[derive(serde::Deserialize, serde::Serialize, Default, PartialEq, Clone)]
 #[serde(default)]
@@ -14,13 +16,14 @@ pub struct Note {
 
 impl Note {
     pub fn new() -> Self {
+        let mut rng = ChaCha20Rng::from_entropy();
         let mut n = Self::default();
         n.id = std::time::UNIX_EPOCH
             .elapsed()
             .map(|t| t.as_micros())
             .unwrap_or_default();
         n.text = "Empty".to_string();
-        n.color = [200,200,200];
+        n.color = [rng.gen_range(0..255),rng.gen_range(0..255),rng.gen_range(0..255)];
         n
     }
 

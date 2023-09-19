@@ -779,8 +779,12 @@ dependencies = [
  "eframe",
  "egui",
  "egui_commonmark",
+ "egui_extras",
+ "egui_grid",
  "env_logger",
  "log",
+ "rand",
+ "rand_chacha",
  "serde",
  "serde_json",
  "wasm-bindgen-futures",
@@ -834,6 +838,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_extras"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9278f4337b526f0d57e5375e5a7340a311fa6ee8f9fcc75721ac50af13face02"
+dependencies = [
+ "egui",
+ "serde",
+]
+
+[[package]]
 name = "egui_glow"
 version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -846,6 +860,16 @@ dependencies = [
  "memoffset 0.6.5",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "egui_grid"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f6abf697418415f2281335b298eaa63601606c026ac53233a7d683326ef5cba"
+dependencies = [
+ "egui",
+ "egui_extras",
 ]
 
 [[package]]
