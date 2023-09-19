@@ -1,12 +1,15 @@
 use std::collections::BTreeSet;
 
-#[derive(serde::Deserialize, serde::Serialize, Default, PartialEq, Eq, Hash, Clone)]
-
+#[derive(serde::Deserialize, serde::Serialize, Default, PartialEq, Clone)]
+#[serde(default)]
 pub struct Note {
     pub text: String,
     pub tags: Vec<String>,
     pub id: u128,
     pub depends: BTreeSet<u128>,
+    pub color: [u8;3],
+    pub progress: f32,
+    pub priority: f32,
 }
 
 impl Note {
@@ -16,6 +19,8 @@ impl Note {
             .elapsed()
             .map(|t| t.as_micros())
             .unwrap_or_default();
+        n.text = "Empty".to_string();
+        n.color = [200,200,200];
         n
     }
 

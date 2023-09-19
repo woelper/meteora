@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::Note;
-use egui::{epaint::ahash::HashSet, Ui};
+use egui::{epaint::{ahash::HashSet, Shadow}, Color32, Layout, Rect, Sense, Style, Ui, Vec2, Stroke};
 use egui_commonmark::*;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -16,7 +16,7 @@ pub struct MeteoraApp {
     notes: BTreeMap<u128, Note>,
     tags: Vec<String>,
     active_tags: HashSet<String>,
-    active_note: Option<u128>
+    active_note: Option<u128>,
 }
 
 impl MeteoraApp {
@@ -97,13 +97,12 @@ impl eframe::App for MeteoraApp {
             });
         });
 
-        egui::SidePanel::left("edit_panel").show(ctx, |ui| {
+        egui::SidePanel::right("edit_panel").show(ctx, |ui| {
             ui.heading("Edit");
-
             ui.vertical_centered_justified(|ui| {
-               if let Some(id) = self.active_note {
-                    draw_note(ui, &id, &mut self.notes);
-               }
+                if let Some(id) = self.active_note {
+                    edit_note(ui, &id, &self.tags, &mut self.notes);
+                }
             });
         });
 
@@ -113,25 +112,19 @@ impl eframe::App for MeteoraApp {
                 self.notes.insert(n.id, n);
             }
 
-            // let all_notes = self.notes.clone();
-            // for (id, note) in &self.notes.clone() {
-            //     if self.active_tags.is_empty()
-            //         || note.tags.iter().any(|t| self.active_tags.contains(t))
-            //     {
-            //         edit_note(ui, id, &self.tags, &mut self.notes);
-            //     }
-            // }
-
-            for (id, note) in &self.notes.clone() {
-                if self.active_tags.is_empty()
-                    || note.tags.iter().any(|t| self.active_tags.contains(t))
-                {
-                    draw_note(ui, id, &mut self.notes);
+            // egui::ScrollArea::horizontal().max_width(128.).show(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                for (id, note) in &self.notes.clone() {
+                    if self.active_tags.is_empty()
+                        || note.tags.iter().any(|t| self.active_tags.contains(t))
+                    {
+                        draw_note(ui, id, &mut self.notes, &mut self.active_note);
+                    }
                 }
-            }
-
-
+            });
         });
+
+        // });
     }
 }
 
@@ -147,7 +140,14 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
         let note = notes.get_mut(note_id).unwrap();
         ui.text_edit_multiline(&mut note.text);
 
-        egui::ComboBox::from_id_source(&note)
+        ui.color_edit_button_srgb(&mut note.color);
+
+        ui.label(format!("{}", note.id));
+        ui.add(egui::Slider::new(&mut note.priority, 0.0..=1.0).text("Priority"));
+        ui.label(format!("prio {}", note.priority));
+        ui.label(format!("prog {}", note.progress));
+
+        egui::ComboBox::from_id_source(&note.id)
             .selected_text(format!("Select tag"))
             .show_ui(ui, |ui| {
                 for tag in tags {
@@ -186,21 +186,65 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
     });
 }
 
-fn draw_note(ui: &mut Ui, note_id: &u128, notes: &mut BTreeMap<u128, Note>) -> Option<u128> {
+fn draw_note(
+    ui: &mut Ui,
+    note_id: &u128,
+    notes: &BTreeMap<u128, Note>,
+    active_note: &mut Option<u128>,
+) {
     // make sure id is valid
     if notes.get(note_id).is_none() {
         ui.label("No such ID");
-        return None;
+        return;
     }
+    let note = notes.get(note_id).unwrap();
 
-    let r = ui.group(|ui| {
-        let note = notes.get_mut(note_id).unwrap();
-        let mut cache = CommonMarkCache::default();
-        CommonMarkViewer::new("viewer").show(ui, &mut cache, &note.text);
-    });
-    if r.response.clicked() {
-        ui.label("dwds");
-        return Some(*note_id)
+    let r = egui::Frame::canvas(&Style::default()).
+    .stroke(Stroke::NONE)
+    .shadow(Shadow::small_light())
+    
+        .fill(Color32::from_rgb(
+            note.color[0],
+            note.color[1],
+            note.color[2],
+        ))
+        .show(ui, |ui| {
+
+            ui.vertical(|ui|{
+                // CommonMarkViewer::new("viewer").show(ui, &mut cache, &note.text);
+                ui.label(&note.text);
+    
+                if !note.depends.is_empty() {
+                    egui::CollapsingHeader::new("Linked")
+                        .id_source(note_id)
+                        .show(ui, |ui| {
+                            for i in &note.depends {
+                                draw_note(ui, i, notes, active_note)
+                            }
+                        });
+                }
+                // let (rect, resp) = ui.allocate_at_least(Vec2::new(100., 100.), Sense::click());
+
+            });
+
+            // let mut cache = CommonMarkCache::default();
+
+        });
+
+    // ui.painter().rect_filled(
+    //     rect,
+    //     0.2,
+    //     Color32::from_rgb(note.color[0], note.color[1], note.color[2]),
+    // );
+
+    // let mut ui = ui.child_ui(rect, Layout::left_to_right(egui::Align::TOP));
+    // ui.child_ui(rect, Layout::left_to_right(egui::Align::Min));
+
+    // let r = ui.scope(|ui| {
+
+    // });
+    let resp = r.response.interact(egui::Sense::click());
+    if resp.clicked() {
+        *active_note = Some(*note_id);
     }
-    None
 }
