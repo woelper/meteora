@@ -19,6 +19,8 @@ egui_grid = "0.2"
 egui_extras = "*"
 rand = "0.8"
 rand_chacha = "0.3"
+# palette = "*"
+
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
