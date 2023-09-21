@@ -1,6 +1,14 @@
 ### Meteora
 
+Meteora is an experiment in note taking.
 
+- A sense of urgency: Notes can be indefinite, periodic or deadlined
+- Progress: Notes progress depending on granular completion
+- Priority: Each not has a priotity, amplified by urgency
+- Tags: they tie notes to intitiatives, outcomes or categories. Abuse them as you like.
+
+
+---
 
 - [x] Fonts
 - [x] Seed based on tags
