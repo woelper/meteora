@@ -3,10 +3,11 @@ use std::{collections::BTreeMap, fs::File, path::Path};
 use egui_extras::Size;
 use egui_grid::GridBuilder;
 
-use crate::Note;
+use crate::{color_from_tag, link_text, Note};
 use egui::{
-    epaint::{ahash::HashSet, Shadow},
-    Color32, FontData, FontFamily, Label, Layout, Rect, Sense, Stroke, Style, Ui, Vec2, TextStyle,
+    epaint::{ahash::HashSet, RectShape, Shadow},
+    Align2, Color32, FontData, FontFamily, FontId, Label, Layout, Rect, Rounding, ScrollArea,
+    SelectableLabel, Sense, Shape, Stroke, Style, TextStyle, Ui, Vec2, RichText, text::LayoutJob,
 };
 use egui_commonmark::*;
 
@@ -23,12 +24,7 @@ pub struct MeteoraApp {
 impl MeteoraApp {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // This is also where you can customize the look and feel of egui using
-        // `cc.egui_ctx.set_visuals` and `cc.egui_ctx.set_fonts`.
-
         let mut fonts = egui::FontDefinitions::default();
-        // Install my own font (maybe supporting non-latin characters):
-
         fonts.font_data.insert(
             "inter".to_owned(),
             FontData::from_static(include_bytes!("fonts/Inter-Regular.ttf")),
@@ -41,11 +37,40 @@ impl MeteoraApp {
             .insert(0, "inter".to_owned());
 
         cc.egui_ctx.set_fonts(fonts);
+        let mut style = (*cc.egui_ctx.style()).clone();
+        style.text_styles = [
+            (
+                egui::TextStyle::Heading,
+                FontId::new(20.0, FontFamily::Proportional),
+            ),
+            (
+                egui::TextStyle::Body,
+                FontId::new(14.0, FontFamily::Proportional),
+            ),
+            (
+                egui::TextStyle::Monospace,
+                FontId::new(14.0, FontFamily::Proportional),
+            ),
+            (
+                egui::TextStyle::Button,
+                FontId::new(14.0, FontFamily::Proportional),
+            ),
+            (
+                egui::TextStyle::Small,
+                FontId::new(10.0, FontFamily::Proportional),
+            ),
+        ]
+        .into();
 
+        // style.visuals.faint_bg_color = Color32::BLUE;
+        // style.visuals.widgets.noninteractive.bg_fill = Color32::BLUE;
+        style.visuals.widgets.inactive.bg_fill = Color32::BLUE;
+        style.visuals.panel_fill = Color32::from_gray(255);
+
+        cc.egui_ctx.set_style(style);
 
         // let mut style= cc.egui_ctx.style();
         // style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 100.;
-
 
         // Note that you must enable the `persistence` feature for this to work.
         if let Some(storage) = cc.storage {
@@ -60,15 +85,12 @@ impl eframe::App for MeteoraApp {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
+        #[cfg(not(target_arch = "wasm32"))]
         let w = File::create("backup.json").unwrap();
         _ = serde_json::to_writer_pretty(w, &self);
     }
 
-    /// Called each time the UI needs repainting, which may be many times per second.
-    /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // let Self { label, value } = self;
-
         #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -94,9 +116,23 @@ impl eframe::App for MeteoraApp {
                 if ui.button("All").clicked() {
                     self.active_tags.clear();
                 }
+                let all_used_tags = self
+                    .notes
+                    .iter()
+                    .map(|(_, n)| &n.tags)
+                    .flatten()
+                    .collect::<Vec<_>>();
                 for tag in &self.tags {
+                    // Hide tags that are unused.
+                    if !all_used_tags.contains(&tag) {
+                        continue;
+                    }
                     let contained = self.active_tags.contains(tag);
-                    if ui.selectable_label(contained, tag).clicked() {
+
+                    ui.style_mut().visuals.selection.bg_fill = color_from_tag(tag);
+
+                    if ui.add(SelectableLabel::new(contained, tag)).clicked() {
+                        // if ui.selectable_label(contained, tag).clicked() {
                         if contained {
                             self.active_tags.remove(tag);
                         } else {
@@ -108,82 +144,107 @@ impl eframe::App for MeteoraApp {
                     // }
                 }
 
+                ui.vertical(|ui| {
+                    ui.add_space(ui.available_height() - 250.);
+                });
+
                 ui.collapsing("Edit", |ui| {
                     if ui.button("Add tag").clicked() {
                         self.tags.push("New Tag".into());
                     }
-                    for tag in &mut self.tags {
-                        ui.text_edit_singleline(tag);
-                    }
+
+                    egui::ScrollArea::horizontal().show(ui, |ui| {
+                        for tag in &mut self.tags {
+                            ui.text_edit_singleline(tag);
+                        }
+                    });
                 });
             });
         });
 
-        egui::SidePanel::right("edit_panel").show(ctx, |ui| {
-            ui.heading("Edit");
-            ui.vertical_centered_justified(|ui| {
-                if let Some(id) = self.active_note {
-                    edit_note(ui, &id, &self.tags, &mut self.notes);
-                }
-            });
-        });
-
         egui::CentralPanel::default().show(ctx, |ui| {
-            let note_size = 100.;
-            let width = ui.available_width();
+            let mut v = Vec::from_iter(self.notes.clone());
+            v.sort_by(|(_, a), (_, b)| b.priority.total_cmp(&a.priority));
 
-            let num_columns = (width / note_size).max(1.0) as usize;
-            ui.label(format!("Cols {num_columns}, notes {}", self.notes.len()));
+            // egui::ScrollArea::horizontal().max_width(128.).show(ui, |ui| {
+                // ui.layout().with_main_wrap(true).
 
-            let mut num_notes = 0;
-            // let ordered_notes = self.notes.keys().collect::<Vec<_>>();
+                // ui.with_layout(Layout::top_down(egui::Align::LEFT).with_main_wrap(true), |ui| {
 
-            // ui.columns(num_columns, |columns| {
+                // ui.allocate_ui_with_layout(Vec2::INFINITY, Layout::left_to_right(egui::Align::Center), |ui| {
 
-            //     for (id, note) in &self.notes.clone() {
+            //     });
+
+            ui.allocate_ui(
+                Vec2::new(150., ui.available_size_before_wrap().y),
+                |ui| ui.with_layout(egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true), |ui|{
+                    for (id, note) in &v {
+                        if self.active_tags.is_empty()
+                            || note.tags.iter().any(|t| self.active_tags.contains(t))
+                        {
+                            // ui.label("dsds");
+                            draw_note(ui, id, &mut self.notes, &mut self.active_note);
+                        }
+                    }
+                }),
+            );
+         
+       
+         
+
+            // ui.with_layout(egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true).with_cross_align(egui::Align::LEFT), |ui| {
+            //     ui.label("world!");
+            //     ui.label("Hello");
+            // });
+
+            // ui.horizontal_wrapped(|ui| {
+            //     for (id, note) in &v {
             //         if self.active_tags.is_empty()
             //             || note.tags.iter().any(|t| self.active_tags.contains(t))
             //         {
-            //             // draw_note(ui, id, &mut self.notes, &mut self.active_note);
+            //             ui.label("dsds");
+            //             // draw_note(ui, /id, &mut self.notes, &mut self.active_note);
             //         }
-            //         let column = num_notes % num_columns;
-            //             columns[column].
-            //         label(format!("Col {column}"));
-            //             draw_note(&mut columns[column], id, &mut self.notes, &mut self.active_note);
-
-            //         num_notes += 1;
             //     }
-
-            //     // for i in 0..num_columns {
-
-            //     //     columns[i].label(format!("C {i}"));
-            //     //     if num_notes < self.notes.len() {
-            //     //         columns[i].group(|ui| {
-            //     //             // draw_note(ui, ordered_notes[num_notes], &self.notes, &mut self.active_note)
-            //     //         });
-
-            //     //     }
-
-            //     // }
-            //     // columns[1].label("Second column");
             // });
-
-            // egui::ScrollArea::horizontal().max_width(128.).show(ui, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                for (id, note) in &self.notes.clone() {
-                    if self.active_tags.is_empty()
-                        || note.tags.iter().any(|t| self.active_tags.contains(t))
-                    {
-                        draw_note(ui, id, &mut self.notes, &mut self.active_note);
-                    }
-                }
-            });
 
             if ui.button("New Note").clicked() {
                 let n = Note::new();
                 self.notes.insert(n.id, n);
             }
+
+            if let Some(id) = self.active_note {
+                // Black background
+                let rect_all = ui.allocate_rect(Rect::EVERYTHING, Sense::click());
+                ui.painter_at(Rect::EVERYTHING).rect_filled(
+                    Rect::EVERYTHING,
+                    Rounding::none(),
+                    Color32::from_rgba_premultiplied(0, 0, 0, 150),
+                );
+
+                if rect_all.clicked() {
+                    self.active_note = None;
+                }
+            }
         });
+
+        if let Some(id) = self.active_note {
+            egui::Window::new("x")
+                .collapsible(false)
+                .movable(false)
+                .title_bar(false)
+                .anchor(Align2::CENTER_CENTER, Vec2::splat(0.))
+                .default_height(800.)
+                .min_height(800.)
+                .min_width(300.)
+                .show(ctx, |ui| {
+                    edit_note(ui, &id, &self.tags, &mut self.notes);
+
+                    if ui.button("close").clicked() {
+                        self.active_note = None;
+                    }
+                });
+        }
 
         // });
     }
@@ -197,16 +258,22 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
     }
     let immutable_notes = notes.clone();
 
-    ui.group(|ui| {
-        let note = notes.get_mut(note_id).unwrap();
-        ui.text_edit_multiline(&mut note.text);
+    let note = notes.get_mut(note_id).unwrap();
+    ui.text_edit_multiline(&mut note.text);
 
+    ui.add_space(200.);
+
+    if note.tags.is_empty() {
         ui.color_edit_button_srgb(&mut note.color);
+    }
 
-        ui.label(format!("{}", note.id));
-        ui.add(egui::Slider::new(&mut note.priority, 0.0..=1.0).text("Priority"));
-        ui.label(format!("prio {}", note.priority));
-        ui.label(format!("prog {}", note.progress));
+    // ui.label(format!("{}", note.id));
+    ui.add(egui::Slider::new(&mut note.priority, 0.0..=1.0).text("Priority"));
+    // ui.label(format!("prio {}", note.priority));
+    // ui.label(format!("prog {}", note.progress));
+
+    ui.horizontal(|ui| {
+        let note = notes.get_mut(note_id).unwrap();
 
         egui::ComboBox::from_id_source(&note.id)
             .selected_text(format!("Select tag"))
@@ -239,12 +306,16 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
                 }
             });
 
-        // ui.collapsing("RND", |ui| {
-        // let mut cache = CommonMarkCache::default();
-        //     CommonMarkViewer::new("viewer").show(ui, &mut cache, &note.text);
-
-        // });
+        if ui.button("🗑").clicked() {
+            notes.remove(note_id);
+        }
     });
+
+    // ui.collapsing("RND", |ui| {
+    // let mut cache = CommonMarkCache::default();
+    //     CommonMarkViewer::new("viewer").show(ui, &mut cache, &note.text);
+
+    // });
 }
 
 fn draw_note(
@@ -258,19 +329,57 @@ fn draw_note(
         ui.label("No such ID");
         return;
     }
+
+
+
+
     let note = notes.get(note_id).unwrap();
 
-    let (rect, resp) = ui.allocate_exact_size(Vec2::splat(100.), Sense::click());
+    let estimated_size = note.get_approx_height(20.);
 
-    ui.painter().rect_filled(
+    let note_size = Vec2::new(150.,estimated_size.max(150.));
+
+
+    let (rect, resp) = ui.allocate_exact_size(note_size, Sense::click());
+
+    let stroke = if resp.hovered() {
+        Stroke::new(2., Color32::GRAY)
+    } else {
+        Stroke::NONE
+    };
+
+    let frame_shape = Shape::Rect(RectShape {
         rect,
-        2.2,
-        Color32::from_rgb(note.color[0], note.color[1], note.color[2]),
-    );
-    // let mut cache = CommonMarkCache::default();
-    // CommonMarkViewer::new("viewer").show(ui, &mut cache, &note.text);
+        rounding: 2.2.into(),
+        fill: note.get_color(),
+        stroke,
+    });
 
-    ui.put(rect, egui::Label::new(&note.text));
+    let shp = {
+        let shadow = Shadow::small_light();
+        let shadow = shadow.tessellate(rect, 5.0);
+        let shadow = Shape::Mesh(shadow);
+        Shape::Vec(vec![shadow, frame_shape])
+    };
+
+    ui.painter().add(shp);
+
+    let mut sub_ui = ui.child_ui(
+        rect.shrink(10.),
+        Layout::left_to_right(egui::Align::Center).with_main_wrap(true),
+    );
+
+
+    sub_ui.label(note.get_clean_text());
+    // sub_ui.label(&note.text);
+    // sub_ui.add_space(20.);
+
+    for link in note.get_links() {
+        // sub_ui.label(format!("l{link}"));
+        sub_ui.hyperlink_to(link_text(link), link);
+    }
+
+    // ui.put(rect, egui::Label::new(note.get_title()));
 
     // });
     // let resp = r.response.interact(egui::Sense::click());
