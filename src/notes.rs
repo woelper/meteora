@@ -19,10 +19,8 @@ impl Note {
     pub fn new() -> Self {
         let mut rng = ChaCha20Rng::from_entropy();
         let mut n = Self::default();
-        n.id = std::time::UNIX_EPOCH
-            .elapsed()
-            .map(|t| t.as_micros())
-            .unwrap_or_default();
+        let time = chrono::Utc::now().timestamp_micros();
+        n.id = time as u128;
         n.text = "Empty".to_string();
         n.color = [
             rng.gen_range(0..255),
@@ -36,7 +34,11 @@ impl Note {
         &self.text.split("\n").nth(0).unwrap_or("Default")
     }
     pub fn get_clean_text(&self) -> String {
-        self.text.split(" ").filter(|w| !w.contains("http")).collect::<Vec<_>>().join(" ")
+        self.text
+            .split(" ")
+            .filter(|w| !w.contains("http"))
+            .collect::<Vec<_>>()
+            .join(" ")
     }
     pub fn get_color(&self) -> Color32 {
         if self.tags.is_empty() {
@@ -44,15 +46,21 @@ impl Note {
         } else {
             color_from_tag(&self.tags.join(""))
         }
-
     }
     pub fn get_links(&self) -> Vec<&str> {
-        self.text.split(&[' ', '\n']).filter(|t| t.contains("http")).collect()
+        self.text
+            .split(&[' ', '\n'])
+            .filter(|t| t.contains("http"))
+            .collect()
     }
 
     pub fn get_approx_height(&self, line_height: f32) -> f32 {
         let newlines = self.get_clean_text().lines().count();
-        let breaks = self.get_clean_text().lines().map(|l| l.chars().count() > 15).count();
+        let breaks = self
+            .get_clean_text()
+            .lines()
+            .map(|l| l.chars().count() > 15)
+            .count();
         (newlines + breaks) as f32 * line_height
     }
 }
@@ -68,7 +76,12 @@ pub fn color_from_tag(tag: &str) -> Color32 {
     .gamma_multiply(0.2)
 }
 
-
-pub fn link_text(raw_link: &str) -> &str{
-    raw_link.split("//").nth(1).unwrap_or_default().split("/").nth(0).unwrap_or_default()
+pub fn link_text(raw_link: &str) -> &str {
+    raw_link
+        .split("//")
+        .nth(1)
+        .unwrap_or_default()
+        .split("/")
+        .nth(0)
+        .unwrap_or_default()
 }
