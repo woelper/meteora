@@ -1,13 +1,12 @@
 use std::{collections::BTreeMap, fs::File, path::Path};
 
-use egui_extras::Size;
-use egui_grid::GridBuilder;
+
 
 use crate::{color_from_tag, link_text, Note};
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow},
-    Align2, Color32, FontData, FontFamily, FontId, Label, Layout, Rect, Rounding, ScrollArea,
-    SelectableLabel, Sense, Shape, Stroke, Style, TextStyle, Ui, Vec2, RichText, text::LayoutJob,
+    Align2, Color32, FontData, FontFamily, FontId, Layout, Rect, Rounding,
+    SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
 use egui_commonmark::*;
 
@@ -86,8 +85,10 @@ impl eframe::App for MeteoraApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
         #[cfg(not(target_arch = "wasm32"))]
-        let w = File::create("backup.json").unwrap();
-        _ = serde_json::to_writer_pretty(w, &self);
+        {
+            let w = File::create("backup.json").unwrap();
+            _ = serde_json::to_writer_pretty(w, &self);
+        }
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -167,30 +168,29 @@ impl eframe::App for MeteoraApp {
             v.sort_by(|(_, a), (_, b)| b.priority.total_cmp(&a.priority));
 
             // egui::ScrollArea::horizontal().max_width(128.).show(ui, |ui| {
-                // ui.layout().with_main_wrap(true).
+            // ui.layout().with_main_wrap(true).
 
-                // ui.with_layout(Layout::top_down(egui::Align::LEFT).with_main_wrap(true), |ui| {
+            // ui.with_layout(Layout::top_down(egui::Align::LEFT).with_main_wrap(true), |ui| {
 
-                // ui.allocate_ui_with_layout(Vec2::INFINITY, Layout::left_to_right(egui::Align::Center), |ui| {
+            // ui.allocate_ui_with_layout(Vec2::INFINITY, Layout::left_to_right(egui::Align::Center), |ui| {
 
             //     });
 
-            ui.allocate_ui(
-                Vec2::new(150., ui.available_size_before_wrap().y),
-                |ui| ui.with_layout(egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true), |ui|{
-                    for (id, note) in &v {
-                        if self.active_tags.is_empty()
-                            || note.tags.iter().any(|t| self.active_tags.contains(t))
-                        {
-                            // ui.label("dsds");
-                            draw_note(ui, id, &mut self.notes, &mut self.active_note);
+            ui.allocate_ui(Vec2::new(150., ui.available_size_before_wrap().y), |ui| {
+                ui.with_layout(
+                    egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true),
+                    |ui| {
+                        for (id, note) in &v {
+                            if self.active_tags.is_empty()
+                                || note.tags.iter().any(|t| self.active_tags.contains(t))
+                            {
+                                // ui.label("dsds");
+                                draw_note(ui, id, &mut self.notes, &mut self.active_note);
+                            }
                         }
-                    }
-                }),
-            );
-         
-       
-         
+                    },
+                )
+            });
 
             // ui.with_layout(egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true).with_cross_align(egui::Align::LEFT), |ui| {
             //     ui.label("world!");
@@ -330,15 +330,11 @@ fn draw_note(
         return;
     }
 
-
-
-
     let note = notes.get(note_id).unwrap();
 
     let estimated_size = note.get_approx_height(20.);
 
-    let note_size = Vec2::new(150.,estimated_size.max(150.));
-
+    let note_size = Vec2::new(150., estimated_size.max(150.));
 
     let (rect, resp) = ui.allocate_exact_size(note_size, Sense::click());
 
@@ -368,7 +364,6 @@ fn draw_note(
         rect.shrink(10.),
         Layout::left_to_right(egui::Align::Center).with_main_wrap(true),
     );
-
 
     sub_ui.label(note.get_clean_text());
     // sub_ui.label(&note.text);
