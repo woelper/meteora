@@ -43,9 +43,9 @@ impl Note {
     pub fn get_color(&self) -> Color32 {
         if self.tags.is_empty() {
             Color32::from_rgb(self.color[0], self.color[1], self.color[2]).gamma_multiply(0.5)
-        } else {
+                    } else {
             color_from_tag(&self.tags.join(""))
-        }
+                    }
     }
     pub fn get_links(&self) -> Vec<&str> {
         self.text
@@ -63,6 +63,11 @@ impl Note {
             .count();
         (newlines + breaks) as f32 * line_height
     }
+    
+    pub fn contains_markdown(&self) -> bool {
+        self.text.contains("# ") || self.text.contains("* ") || self.text.contains("- ") || self.text.contains("1. ") || self.text.contains("[")
+    }
+
 }
 
 pub fn color_from_tag(tag: &str) -> Color32 {
