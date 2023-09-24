@@ -8,7 +8,7 @@ fn main() -> eframe::Result<()> {
 
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(
-        "eframe template",
+        "Meteora",
         native_options,
         Box::new(|cc| Box::new(eframe_template::MeteoraApp::new(cc))),
     )

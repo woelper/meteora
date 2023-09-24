@@ -99,10 +99,15 @@ impl eframe::App for MeteoraApp {
                         _frame.close();
                     }
                     global_dark_light_mode_buttons(ui);
+                    if ui.button("Save").clicked() {
+                        let w = File::create("backup.json").unwrap();
+                        _ = serde_json::to_writer_pretty(w, &self);
+                    }
+
                     if ui.button("Restore").clicked() {
                         let p = Path::new("backup.json");
                         if p.exists() {
-                            self.notes = serde_json::from_reader(File::open(p).unwrap()).unwrap();
+                            *self = serde_json::from_reader(File::open(p).unwrap()).unwrap();
                         }
                     }
                 });
