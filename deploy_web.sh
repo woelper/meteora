@@ -1,2 +1,2 @@
-trunk build --release
+trunk build --release --public-url docs
 cp -r dist docs
