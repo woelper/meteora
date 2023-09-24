@@ -8,6 +8,10 @@ Meteora is an experiment in note taking.
 - Tags: they tie notes to intitiatives, outcomes or categories. Abuse them as you like.
 
 
+Test it here:
+https://woelper.github.io/meteora/
+
+
 ---
 
 ### TODO
