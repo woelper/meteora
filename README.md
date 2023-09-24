@@ -13,10 +13,12 @@ Meteora is an experiment in note taking.
 ### TODO
 
 - [ ] show checkboxes
+- [ ] Draw dependencies
 - [ ] show progress based on checkboxes
-- [ ] Nice "New Note" button
-- [ ] When tag is selected, new note has tag
-- [ ] Markup toggle or detection
+- [X] Nice "New Note" button
+- [x] Delete should remove id
+- [ ] Markup toggle or detection - commonmark renders strangely.
+- [x] When tag is selected, new note has tag
 - [x] Fonts
 - [x] Seed based on tags
 - [x] Shadow
