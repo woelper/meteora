@@ -4,9 +4,9 @@ use crate::{color_from_tag, link_text, Note, readable_text};
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow},
     global_dark_light_mode_buttons, Align2, Color32, FontData, FontFamily, FontId, Layout, Pos2,
-    Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2, Label,
+    Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
-use egui_commonmark::*;
+// use egui_commonmark::*;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Default)]
