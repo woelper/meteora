@@ -1,10 +1,10 @@
 use std::{collections::BTreeMap, fs::File, path::Path};
 
-use crate::{color_from_tag, link_text, Note};
+use crate::{color_from_tag, link_text, Note, readable_text};
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow},
     global_dark_light_mode_buttons, Align2, Color32, FontData, FontFamily, FontId, Layout, Pos2,
-    Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
+    Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2, Label,
 };
 use egui_commonmark::*;
 
@@ -376,7 +376,9 @@ fn draw_note(
     //     sub_ui.label(note.get_clean_text());
     // }
 
-    sub_ui.label(note.get_clean_text());
+    sub_ui.label(RichText::new(note.get_clean_text()).color(readable_text(&Color32::from_rgb(note.color[0], note.color[1], note.color[2]))));
+
+   
     // sub_ui.label(&note.text);
     // sub_ui.add_space(20.);
 

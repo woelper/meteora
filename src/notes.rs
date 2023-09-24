@@ -43,9 +43,9 @@ impl Note {
     pub fn get_color(&self) -> Color32 {
         if self.tags.is_empty() {
             Color32::from_rgb(self.color[0], self.color[1], self.color[2]).gamma_multiply(0.5)
-                    } else {
-            color_from_tag(&self.tags.join(""))
-                    }
+        } else {
+            color_from_tag(&self.tags.join("")).gamma_multiply(0.5)
+        }
     }
     pub fn get_links(&self) -> Vec<&str> {
         self.text
@@ -63,11 +63,14 @@ impl Note {
             .count();
         (newlines + breaks) as f32 * line_height
     }
-    
-    pub fn contains_markdown(&self) -> bool {
-        self.text.contains("# ") || self.text.contains("* ") || self.text.contains("- ") || self.text.contains("1. ") || self.text.contains("[")
-    }
 
+    pub fn contains_markdown(&self) -> bool {
+        self.text.contains("# ")
+            || self.text.contains("* ")
+            || self.text.contains("- ")
+            || self.text.contains("1. ")
+            || self.text.contains("[")
+    }
 }
 
 pub fn color_from_tag(tag: &str) -> Color32 {
@@ -77,8 +80,12 @@ pub fn color_from_tag(tag: &str) -> Color32 {
         rng.gen_range(0..255),
         rng.gen_range(0..255),
         rng.gen_range(0..255),
+        
     )
-    .gamma_multiply(0.2)
+    // Color32::GREEN
+    
+    // .linear_multiply(0.0000001)
+    // .gamma_multiply(0.9)
 }
 
 pub fn link_text(raw_link: &str) -> &str {
@@ -89,4 +96,14 @@ pub fn link_text(raw_link: &str) -> &str {
         .split("/")
         .nth(0)
         .unwrap_or_default()
+}
+
+// determine the color's brigheness level and then invert it
+pub fn readable_text(color: &Color32) -> Color32 {
+    let brightness = color.r() as f32 * 0.299 + color.g() as f32 * 0.587 + color.b() as f32 * 0.114;
+    if brightness > 128.0 {
+        Color32::from_rgb(0, 0, 0)
+    } else {
+        Color32::from_rgb(255, 255, 255)
+    }
 }
