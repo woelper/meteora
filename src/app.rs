@@ -204,6 +204,7 @@ impl eframe::App for MeteoraApp {
             if draw_note_add_button(ui).clicked() {
                 let mut n = Note::new();
                 n.tags = self.active_tags.iter().map(|x| x.clone()).collect();
+                self.active_note = Some(n.id);
                 self.notes.insert(n.id, n);
             }
 
@@ -261,7 +262,11 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
     ui.text_edit_multiline(&mut note.text);
 
     ui.add_space(200.);
-    ui.color_edit_button_srgb(&mut note.color);
+
+    // Color comes from tags, so only show selector if there are no tags.
+    if note.tags.is_empty() {
+        ui.color_edit_button_srgb(&mut note.color);
+    }
 
     // ui.label(format!("{}", note.id));
     ui.add(egui::Slider::new(&mut note.priority, 0.0..=1.0).text("Priority"));
@@ -337,8 +342,6 @@ fn draw_note(
     } else {
         Stroke::NONE
     };
-
-    ui.label(format!("ol {:?}", note.get_color()));
 
     let frame_shape = Shape::Rect(RectShape {
         rect,
