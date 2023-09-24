@@ -1,12 +1,10 @@
 use std::{collections::BTreeMap, fs::File, path::Path};
 
-
-
 use crate::{color_from_tag, link_text, Note};
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow},
-    Align2, Color32, FontData, FontFamily, FontId, Layout, Rect, Rounding,
-    SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
+    global_dark_light_mode_buttons, Align2, Color32, FontData, FontFamily, FontId, Layout, Pos2,
+    Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
 use egui_commonmark::*;
 
@@ -63,8 +61,9 @@ impl MeteoraApp {
 
         // style.visuals.faint_bg_color = Color32::BLUE;
         // style.visuals.widgets.noninteractive.bg_fill = Color32::BLUE;
-        style.visuals.widgets.inactive.bg_fill = Color32::BLUE;
-        style.visuals.panel_fill = Color32::from_gray(255);
+        // style.visuals.widgets.inactive.bg_fill = Color32::BLUE;
+
+        // style.visuals.panel_fill = Color32::from_gray(255);
 
         cc.egui_ctx.set_style(style);
 
@@ -81,7 +80,6 @@ impl MeteoraApp {
 }
 
 impl eframe::App for MeteoraApp {
-    /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
         #[cfg(not(target_arch = "wasm32"))]
@@ -100,6 +98,7 @@ impl eframe::App for MeteoraApp {
                     if ui.button("Quit").clicked() {
                         _frame.close();
                     }
+                    global_dark_light_mode_buttons(ui);
                     if ui.button("Restore").clicked() {
                         let p = Path::new("backup.json");
                         if p.exists() {
@@ -131,7 +130,7 @@ impl eframe::App for MeteoraApp {
                     let contained = self.active_tags.contains(tag);
 
                     ui.style_mut().visuals.selection.bg_fill = color_from_tag(tag);
-
+                    // ui.label(format!("{:?}",color_from_tag(tag)));
                     if ui.add(SelectableLabel::new(contained, tag)).clicked() {
                         // if ui.selectable_label(contained, tag).clicked() {
                         if contained {
@@ -156,7 +155,19 @@ impl eframe::App for MeteoraApp {
 
                     egui::ScrollArea::horizontal().show(ui, |ui| {
                         for tag in &mut self.tags {
-                            ui.text_edit_singleline(tag);
+                            let old_tag = tag.clone();
+                            if ui.text_edit_singleline(tag).changed() {
+                                // If a tag is renamed, we need to rename it in all notes.
+                                for note in self.notes.values_mut() {
+                                    if note.tags.contains(&old_tag) {
+                                        if let Some(i) =
+                                            note.tags.iter().position(|x| x == &old_tag)
+                                        {
+                                            note.tags[i] = tag.clone();
+                                        }
+                                    }
+                                }
+                            }
                         }
                     });
                 });
@@ -167,15 +178,6 @@ impl eframe::App for MeteoraApp {
             let mut v = Vec::from_iter(self.notes.clone());
             v.sort_by(|(_, a), (_, b)| b.priority.total_cmp(&a.priority));
 
-            // egui::ScrollArea::horizontal().max_width(128.).show(ui, |ui| {
-            // ui.layout().with_main_wrap(true).
-
-            // ui.with_layout(Layout::top_down(egui::Align::LEFT).with_main_wrap(true), |ui| {
-
-            // ui.allocate_ui_with_layout(Vec2::INFINITY, Layout::left_to_right(egui::Align::Center), |ui| {
-
-            //     });
-
             ui.allocate_ui(Vec2::new(150., ui.available_size_before_wrap().y), |ui| {
                 ui.with_layout(
                     egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true),
@@ -184,36 +186,28 @@ impl eframe::App for MeteoraApp {
                             if self.active_tags.is_empty()
                                 || note.tags.iter().any(|t| self.active_tags.contains(t))
                             {
-                                // ui.label("dsds");
                                 draw_note(ui, id, &mut self.notes, &mut self.active_note);
+                                // Safety: if note has an unknown tag, add it.
+                                for tag in &note.tags {
+                                    if !self.tags.contains(tag) {
+                                        self.tags.push(tag.clone());
+                                    }
+                                }
                             }
                         }
                     },
                 )
             });
 
-            // ui.with_layout(egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true).with_cross_align(egui::Align::LEFT), |ui| {
-            //     ui.label("world!");
-            //     ui.label("Hello");
-            // });
+            //create a round button at an absolute position
 
-            // ui.horizontal_wrapped(|ui| {
-            //     for (id, note) in &v {
-            //         if self.active_tags.is_empty()
-            //             || note.tags.iter().any(|t| self.active_tags.contains(t))
-            //         {
-            //             ui.label("dsds");
-            //             // draw_note(ui, /id, &mut self.notes, &mut self.active_note);
-            //         }
-            //     }
-            // });
-
-            if ui.button("New Note").clicked() {
-                let n = Note::new();
+            if draw_note_add_button(ui).clicked() {
+                let mut n = Note::new();
+                n.tags = self.active_tags.iter().map(|x| x.clone()).collect();
                 self.notes.insert(n.id, n);
             }
 
-            if let Some(id) = self.active_note {
+            if self.active_note.is_some() {
                 // Black background
                 let rect_all = ui.allocate_rect(Rect::EVERYTHING, Sense::click());
                 ui.painter_at(Rect::EVERYTHING).rect_filled(
@@ -229,6 +223,11 @@ impl eframe::App for MeteoraApp {
         });
 
         if let Some(id) = self.active_note {
+            // clean invalid id (because of deletion)
+            if !self.notes.contains_key(&id) {
+                self.active_note = None;
+            }
+
             egui::Window::new("x")
                 .collapsible(false)
                 .movable(false)
@@ -238,7 +237,7 @@ impl eframe::App for MeteoraApp {
                 .min_height(800.)
                 .min_width(300.)
                 .show(ctx, |ui| {
-                    edit_note(ui, &id, &self.tags, &mut self.notes);
+                    edit_note(ui, &id, &mut self.tags, &mut self.notes);
 
                     if ui.button("close").clicked() {
                         self.active_note = None;
@@ -262,15 +261,10 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
     ui.text_edit_multiline(&mut note.text);
 
     ui.add_space(200.);
-
-    if note.tags.is_empty() {
-        ui.color_edit_button_srgb(&mut note.color);
-    }
+    ui.color_edit_button_srgb(&mut note.color);
 
     // ui.label(format!("{}", note.id));
     ui.add(egui::Slider::new(&mut note.priority, 0.0..=1.0).text("Priority"));
-    // ui.label(format!("prio {}", note.priority));
-    // ui.label(format!("prog {}", note.progress));
 
     ui.horizontal(|ui| {
         let note = notes.get_mut(note_id).unwrap();
@@ -280,7 +274,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
             .show_ui(ui, |ui| {
                 for tag in tags {
                     let contains = note.tags.contains(tag);
-                    if ui.selectable_label(contains, tag).clicked() {
+                    if ui.selectable_label(contains, format!("{tag}")).clicked() {
                         if contains {
                             let index = note.tags.iter().position(|x| x == tag).unwrap();
                             note.tags.remove(index);
@@ -344,9 +338,11 @@ fn draw_note(
         Stroke::NONE
     };
 
+    ui.label(format!("ol {:?}", note.get_color()));
+
     let frame_shape = Shape::Rect(RectShape {
         rect,
-        rounding: 2.2.into(),
+        rounding: 5.0.into(),
         fill: note.get_color(),
         stroke,
     });
@@ -365,6 +361,13 @@ fn draw_note(
         Layout::left_to_right(egui::Align::Center).with_main_wrap(true),
     );
 
+    // if note.contains_markdown() {
+    //     let mut cache = CommonMarkCache::default();
+    //     CommonMarkViewer::new("viewer").show(&mut sub_ui, &mut cache, &note.get_clean_text());
+    // } else {
+    //     sub_ui.label(note.get_clean_text());
+    // }
+
     sub_ui.label(note.get_clean_text());
     // sub_ui.label(&note.text);
     // sub_ui.add_space(20.);
@@ -381,4 +384,25 @@ fn draw_note(
     if resp.clicked() {
         *active_note = Some(*note_id);
     }
+}
+
+fn draw_note_add_button(ui: &mut Ui) -> Response {
+    let button_size = Vec2::splat(60.);
+    let margin = 10.;
+
+    let pos = Pos2::new(
+        ui.ctx().screen_rect().right() - button_size.x / 2. - margin,
+        ui.ctx().screen_rect().bottom() - button_size.y / 2. - margin,
+    );
+    let rect = Rect::from_center_size(pos, button_size);
+
+    // let p = ui.painter_at(rect).circle_filled(pos, button_size.x/2., Color32::RED);
+    let r = ui.put(
+        rect,
+        egui::widgets::Button::new(RichText::new("✚").heading())
+            .rounding(100.)
+            .fill(Color32::from_rgba_premultiplied(50, 50, 50, 100)),
+    );
+
+    r
 }
