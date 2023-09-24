@@ -1,6 +1,6 @@
 {
-  "name": "egui Template PWA",
-  "short_name": "egui-template-pwa",
+  "name": "Meteora PWA",
+  "short_name": "meteora-pwa",
   "icons": [
     {
       "src": "./icon-256.png",
