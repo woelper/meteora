@@ -16,10 +16,23 @@ https://woelper.github.io/meteora/
 
 ### TODO
 
+- [ ] Always on top
+- [ ] suggest to load backup if file present and notes are empty
 - [ ] show checkboxes
+- [ ] Tag deletion
+- [ ] better "add new tag" in note editor
+- [ ] Larger textarea in note editor
+- [ ] Try tag cloud in collapsible header instead of tag dropdown
+- [ ] Note search
+- [ ] Visual cue for urgency (pulsate etc)
+- [ ] Add deadline, calendar, deadline type
 - [ ] Draw dependencies
 - [ ] show progress based on checkboxes
-- [ ] Markup toggle or detection - commonmark renders strangely.
+- [ ] Markup toggle or detection / bug: commonmark renders strangely.
+- [ ] Custom basic markup
+- [ ] Notes need to scroll right
+- [ ] Tag buttons on top of note
+- [ ] Tag colors in sidebar should match note colors
 - [X] Nice "New Note" button
 - [x] Delete should remove id
 - [x] When tag is selected, new note has tag
