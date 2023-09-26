@@ -120,7 +120,7 @@ impl eframe::App for MeteoraApp {
 
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label("search");
+                ui.label("🔍");
                 ui.text_edit_singleline(&mut self.filter);
             });
 
@@ -167,7 +167,7 @@ impl eframe::App for MeteoraApp {
                             ui.horizontal(|ui| {
                                 if ui.button("🗑").on_hover_text("Delete this tag from list and all notes.").clicked() {
                                     for note in self.notes.values_mut() {
-                                        // let tag_index = note.tags.re
+                                        note.tags.remove(tag);
                                     }
                                     tag_index_to_delete = Some(i);
                                 }
@@ -176,11 +176,14 @@ impl eframe::App for MeteoraApp {
                                     // If a tag is renamed, we need to rename it in all notes.
                                     for note in self.notes.values_mut() {
                                         if note.tags.contains(&old_tag) {
-                                            if let Some(i) =
-                                                note.tags.iter().position(|x| x == &old_tag)
-                                            {
-                                                note.tags[i] = tag.clone();
-                                            }
+                                            note.tags.remove(&old_tag);
+                                            note.tags.insert(tag.clone());
+
+                                            // if let Some(i) =
+                                            //     note.tags.iter().position(|x| x == &old_tag)
+                                            // {
+                                            //     note.tags[i] = tag.clone();
+                                            // }
                                         }
                                     }
                                 }
@@ -365,10 +368,9 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
                     let contains = note.tags.contains(tag);
                     if ui.selectable_label(contains, tag.to_string()).clicked() {
                         if contains {
-                            let index = note.tags.iter().position(|x| x == tag).unwrap();
-                            note.tags.remove(index);
+                            note.tags.remove(tag);
                         } else {
-                            note.tags.push(tag.clone())
+                            note.tags.insert(tag.clone());
                         }
                     }
                 }

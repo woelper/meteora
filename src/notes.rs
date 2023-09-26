@@ -18,7 +18,7 @@ pub enum Deadline {
 #[serde(default)]
 pub struct Note {
     pub text: String,
-    pub tags: Vec<String>,
+    pub tags: BTreeSet<String>,
     pub id: u128,
     pub depends: BTreeSet<u128>,
     pub color: [u8; 3],
@@ -61,7 +61,8 @@ impl Note {
             Color32::from_rgb(self.color[0], self.color[1], self.color[2])
             .gamma_multiply(0.5)
         } else {
-            color_from_tag(&self.tags.join(""))
+            let s = self.tags.clone().into_iter().collect::<Vec<String>>().join("");
+            color_from_tag(&s)
             .gamma_multiply(0.5)
         }
     }
