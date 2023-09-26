@@ -15,14 +15,13 @@ eframe = { version = "0.22.0", default-features = false, features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 log = "0.4"
-egui_grid = "0.2"
-egui_extras = "*"
+egui_extras = { version = "0.22", features = ["datepicker"] }
 getrandom = { version = "0.2", features = ["js"] }
 
-chrono = {version = "*", features = ["wasmbind"]}
+chrono = {version = "*", features = ["wasmbind", "serde"]}
 rand = {version = "0.8"}
 rand_chacha = "0.3"
-# palette = "*"
+
 
 
 # You only need serde if you want app persistence:
