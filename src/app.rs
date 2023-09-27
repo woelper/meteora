@@ -165,7 +165,11 @@ impl eframe::App for MeteoraApp {
 
                         for (i, tag) in &mut self.tags.iter_mut().enumerate() {
                             ui.horizontal(|ui| {
-                                if ui.button("🗑").on_hover_text("Delete this tag from list and all notes.").clicked() {
+                                if ui
+                                    .button("🗑")
+                                    .on_hover_text("Delete this tag from list and all notes.")
+                                    .clicked()
+                                {
                                     for note in self.notes.values_mut() {
                                         note.tags.remove(tag);
                                     }
@@ -192,7 +196,6 @@ impl eframe::App for MeteoraApp {
 
                         if let Some(i) = tag_index_to_delete {
                             self.tags.remove(i);
-                         
                         }
                     });
                 });
@@ -358,6 +361,24 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
         ui.color_edit_button_srgb(&mut note.color);
     }
 
+    ui.group(|ui| {
+        ui.allocate_space(vec2(ui.available_width(), 0.));
+        ui.horizontal(|ui| {
+            ui.label("Tags:");
+            for tag in tags {
+                let contains = note.tags.contains(tag);
+                ui.style_mut().visuals.selection.bg_fill = color_from_tag(tag).gamma_multiply(0.5);
+                if ui.selectable_label(contains, tag.to_string()).clicked() {
+                    if contains {
+                        note.tags.remove(tag);
+                    } else {
+                        note.tags.insert(tag.clone());
+                    }
+                }
+            }
+        });
+    });
+
     ui.horizontal(|ui| {
         let note = notes.get_mut(note_id).unwrap();
 
@@ -447,9 +468,7 @@ fn draw_note(
             Pos2::new(rect.left_top().x + offset, rect.left_top().y + offset),
         )
         .translate(vec2(offset * i as f32, 0.0))
-        .translate(vec2(-offset + 2., note_size.y-offset-2.))
-        
-        ;
+        .translate(vec2(-offset + 2., note_size.y - offset - 2.));
 
         let tag_shape = Shape::Rect(RectShape {
             rect: r,
