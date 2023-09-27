@@ -16,7 +16,7 @@ https://woelper.github.io/meteora/
 
 ### TODO
 
-- [ ] show checkboxes
+- [ ] show checkboxes in notes
 - [ ] Tag deletion
 - [ ] better "add new tag" in note editor
 - [ ] Try tag cloud in collapsible header instead of tag dropdown
@@ -26,7 +26,7 @@ https://woelper.github.io/meteora/
 - [ ] show progress based on checkboxes
 - [ ] Markup toggle or detection / bug: commonmark renders strangely.
 - [ ] Custom basic markup
-- [ ] Tag buttons on top of note view
+- [X] Tag buttons on top of note view
 - [X] Always on top
 - [X] Tag colors in sidebar should match note colors
 - [X] suggest to load backup if file present and notes are empty
