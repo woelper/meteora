@@ -7,6 +7,10 @@ use egui::{
     Pos2, Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
 
+use anyhow::Result;
+use magic_crypt::{new_magic_crypt, MagicCryptTrait};
+
+
 // use egui_commonmark::*;
 
 #[derive(serde::Deserialize, serde::Serialize, Default, Debug, PartialEq, Eq)]
@@ -14,6 +18,7 @@ pub enum ViewMode {
     #[default]
     Board,
     List,
+    Graph
 }
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -96,7 +101,7 @@ impl eframe::App for MeteoraApp {
         eframe::set_value(storage, eframe::APP_KEY, self);
         #[cfg(not(target_arch = "wasm32"))]
         {
-            if let Some(enc) = encrypt_notes(&self.notes, &self.credentials) {
+            if let Ok(enc) = encrypt_notes(&self.notes, &self.credentials) {
                 _ = write("backup.json", enc);
             }
         }
@@ -113,7 +118,7 @@ impl eframe::App for MeteoraApp {
                     }
                     global_dark_light_mode_buttons(ui);
                     if ui.button("Save").clicked() {
-                        if let Some(enc) = encrypt_notes(&self.notes, &self.credentials) {
+                        if let Ok(enc) = encrypt_notes(&self.notes, &self.credentials) {
                             _ = write("backup.json", enc);
                         }
                     }
@@ -122,9 +127,10 @@ impl eframe::App for MeteoraApp {
                         let p = Path::new("backup.json");
                         if p.exists() {
                             if let Ok(encrypted_notes) = std::fs::read_to_string("backup.json") {
-                                if let Some(notes) =
+                                if let Ok(notes) =
                                     decrypt_notes(&encrypted_notes, &self.credentials)
                                 {
+                                    dbg!("Decrypted notes");
                                     self.notes = notes;
                                 }
                             } else {
@@ -233,6 +239,7 @@ impl eframe::App for MeteoraApp {
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut self.viewmode, ViewMode::Board, "Board");
                             ui.selectable_value(&mut self.viewmode, ViewMode::List, "List");
+                            ui.selectable_value(&mut self.viewmode, ViewMode::Graph, "Graph");
                         });
                 });
             });
@@ -245,7 +252,7 @@ impl eframe::App for MeteoraApp {
                 let p = Path::new("backup.json");
                 if p.exists() && ui.button("Backup file detected. Restore?").clicked() {
                     if let Ok(encrypted_notes) = std::fs::read_to_string("backup.json") {
-                        if let Some(notes) = decrypt_notes(&encrypted_notes, &self.credentials) {
+                        if let Ok(notes) = decrypt_notes(&encrypted_notes, &self.credentials) {
                             self.notes = notes;
                         }
                     }
@@ -258,6 +265,9 @@ impl eframe::App for MeteoraApp {
                 }
                 ViewMode::List => {
                     listview(ui, self);
+                }
+                ViewMode::Graph => {
+                    ui.label("Not yet!");
                 }
             }
 
@@ -629,24 +639,31 @@ fn draw_note_add_button(ui: &mut Ui) -> Response {
     )
 }
 
-fn decrypt_notes(raw_notes: &str, credentials: &(String, String)) -> Option<BTreeMap<u128, Note>> {
+fn decrypt_notes(raw_notes: &str, credentials: &(String, String)) -> Result<BTreeMap<u128, Note>> {
     if credentials.1.is_empty() {
         // no encryption
-        serde_json::from_str(raw_notes).ok()
+        Ok(serde_json::from_str(raw_notes)?)
     } else {
         // encrypt using key
-        serde_json::from_str(raw_notes).ok()
+        let mc = new_magic_crypt!(&credentials.1, 256);
+        let d = mc.decrypt_base64_to_string(raw_notes)?;
+        dbg!("decrypted with ", credentials);
+        Ok(serde_json::from_str(&d)?)
     }
 }
 
-fn encrypt_notes(notes: &BTreeMap<u128, Note>, credentials: &(String, String)) -> Option<String> {
+fn encrypt_notes(notes: &BTreeMap<u128, Note>, credentials: &(String, String)) -> Result<String> {
     if credentials.1.is_empty() {
         // no encryption
-        serde_json::to_string_pretty(notes).ok()
+        Ok(serde_json::to_string_pretty(notes)?)
+
     } else {
         // encrypt using key
-        serde_json::to_string(notes).ok()
+        let mc = new_magic_crypt!(&credentials.1, 256);
+        Ok(mc.encrypt_str_to_base64(serde_json::to_string(notes)?))
     }
+
+    
 }
 
 fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
