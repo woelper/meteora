@@ -19,7 +19,7 @@ https://woelper.github.io/meteora/
 - [ ] show checkboxes in notes
 - [ ] Tag deletion
 - [ ] better "add new tag" in note editor
-- [ ] Try tag cloud in collapsible header instead of tag dropdown
+- [X] Try tag cloud in collapsible header instead of tag dropdown
 - [ ] Visual cue for urgency (pulsate etc)
 - [ ] Add deadline, calendar, deadline type
 - [ ] Draw dependencies
