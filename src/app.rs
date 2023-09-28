@@ -1,10 +1,13 @@
-use std::{collections::BTreeMap, fs::File, path::Path};
+use std::{
+    collections::BTreeMap,
+    fs::write,
+    path::Path,
+};
 
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note};
-use chrono::NaiveDate;
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow},
-    global_dark_light_mode_buttons, vec2, Align2, Color32, FontData, FontFamily, FontId, Layout,
+    global_dark_light_mode_buttons, vec2, Color32, FontData, FontFamily, FontId, Layout,
     Pos2, Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
 
@@ -18,6 +21,7 @@ pub struct MeteoraApp {
     tags: Vec<String>,
     active_tags: HashSet<String>,
     active_note: Option<u128>,
+    credentials: (String, String),
     temp_name: Option<String>,
     filter: String,
 }
@@ -88,8 +92,9 @@ impl eframe::App for MeteoraApp {
         eframe::set_value(storage, eframe::APP_KEY, self);
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let w = File::create("backup.json").unwrap();
-            _ = serde_json::to_writer_pretty(w, &self);
+            if let Some(enc) = encrypt_notes(&self.notes, &self.credentials) {
+                _ = write("backup.json", enc);
+            }
         }
     }
 
@@ -104,14 +109,24 @@ impl eframe::App for MeteoraApp {
                     }
                     global_dark_light_mode_buttons(ui);
                     if ui.button("Save").clicked() {
-                        let w = File::create("backup.json").unwrap();
-                        _ = serde_json::to_writer_pretty(w, &self);
+                        if let Some(enc) = encrypt_notes(&self.notes, &self.credentials) {
+                            _ = write("backup.json", enc);
+                        }
                     }
 
                     if ui.button("Restore").clicked() {
                         let p = Path::new("backup.json");
                         if p.exists() {
-                            *self = serde_json::from_reader(File::open(p).unwrap()).unwrap();
+                            if let Ok(encrypted_notes) = std::fs::read_to_string("backup.json") {
+                                if let Some(notes) =
+                                    decrypt_notes(&encrypted_notes, &self.credentials)
+                                {
+                                    self.notes = notes;
+                                }
+                            } else {
+                                // TODO: send toast
+                                println!("Can't load notes");
+                            }
                         }
                     }
                 });
@@ -199,6 +214,16 @@ impl eframe::App for MeteoraApp {
                         }
                     });
                 });
+
+                ui.collapsing("Settings", |ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.credentials.0).hint_text("Username"),
+                    );
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.credentials.1)
+                            .hint_text("Encryption Key"),
+                    );
+                });
             });
         });
 
@@ -208,7 +233,11 @@ impl eframe::App for MeteoraApp {
             if self.notes.is_empty() {
                 let p = Path::new("backup.json");
                 if p.exists() && ui.button("Backup file detected. Restore?").clicked() {
-                    *self = serde_json::from_reader(File::open(p).unwrap()).unwrap();
+                    if let Ok(encrypted_notes) = std::fs::read_to_string("backup.json") {
+                        if let Some(notes) = decrypt_notes(&encrypted_notes, &self.credentials) {
+                            self.notes = notes;
+                        }
+                    }
                 }
             }
 
@@ -541,4 +570,24 @@ fn draw_note_add_button(ui: &mut Ui) -> Response {
             .rounding(100.)
             .fill(Color32::from_rgba_premultiplied(50, 50, 50, 100)),
     )
+}
+
+fn decrypt_notes(raw_notes: &str, credentials: &(String, String)) -> Option<BTreeMap<u128, Note>> {
+    if credentials.1.is_empty() {
+        // no encryption
+        serde_json::from_str(raw_notes).ok()
+    } else {
+        // encrypt using key
+        serde_json::from_str(raw_notes).ok()
+    }
+}
+
+fn encrypt_notes(notes: &BTreeMap<u128, Note>, credentials: &(String, String)) -> Option<String> {
+    if credentials.1.is_empty() {
+        // no encryption
+        serde_json::to_string_pretty(notes).ok()
+    } else {
+        // encrypt using key
+        serde_json::to_string(notes).ok()
+    }
 }

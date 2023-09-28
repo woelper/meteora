@@ -18,16 +18,19 @@ log = "0.4"
 egui_extras = { version = "0.22", features = ["datepicker"] }
 getrandom = { version = "0.2", features = ["js"] }
 
-chrono = {version = "*", features = ["wasmbind", "serde"]}
-rand = {version = "0.8"}
+chrono = { version = "*", features = ["wasmbind", "serde"] }
+rand = { version = "0.8" }
 rand_chacha = "0.3"
-
-
+#anyhow = "*"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-egui_commonmark = {version = "0.7.4", features = ["fetch", "syntax_highlighting"] }
+egui_commonmark = { version = "0.7.4", features = [
+    "fetch",
+    "syntax_highlighting",
+] }
+# magic-crypt = "3.1.12"
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
