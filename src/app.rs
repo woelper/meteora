@@ -1,17 +1,20 @@
-use std::{
-    collections::BTreeMap,
-    fs::write,
-    path::Path,
-};
+use std::{collections::BTreeMap, fs::write, path::Path};
 
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note};
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow},
-    global_dark_light_mode_buttons, vec2, Color32, FontData, FontFamily, FontId, Layout,
+    global_dark_light_mode_buttons, vec2, Color32, ComboBox, FontData, FontFamily, FontId, Layout,
     Pos2, Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
 
 // use egui_commonmark::*;
+
+#[derive(serde::Deserialize, serde::Serialize, Default, Debug, PartialEq, Eq)]
+pub enum ViewMode {
+    #[default]
+    Board,
+    List,
+}
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -24,6 +27,7 @@ pub struct MeteoraApp {
     credentials: (String, String),
     temp_name: Option<String>,
     filter: String,
+    viewmode: ViewMode,
 }
 
 impl MeteoraApp {
@@ -223,6 +227,13 @@ impl eframe::App for MeteoraApp {
                         egui::TextEdit::singleline(&mut self.credentials.1)
                             .hint_text("Encryption Key"),
                     );
+
+                    egui::ComboBox::from_label("Select one!")
+                        .selected_text(format!("{:?}", self.viewmode))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.viewmode, ViewMode::Board, "Board");
+                            ui.selectable_value(&mut self.viewmode, ViewMode::List, "List");
+                        });
                 });
             });
         });
@@ -241,44 +252,14 @@ impl eframe::App for MeteoraApp {
                 }
             }
 
-            let mut v = Vec::from_iter(self.notes.clone());
-            v.sort_by(|(_, a), (_, b)| b.priority.total_cmp(&a.priority));
-
-            egui::ScrollArea::horizontal()
-                // .auto_shrink([false,false])
-                .hscroll(true)
-                .min_scrolled_width(ui.available_width())
-                .show(ui, |ui| {
-                    ui.allocate_ui(Vec2::new(150., ui.available_size_before_wrap().y), |ui| {
-                        ui.with_layout(
-                            egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true),
-                            |ui| {
-                                // Add a lot of widgets here.
-                                for (id, note) in &v {
-                                    if self.active_tags.is_empty()
-                                        || note.tags.iter().any(|t| self.active_tags.contains(t))
-                                    {
-                                        if !self.filter.is_empty()
-                                            && !note
-                                                .text
-                                                .to_lowercase()
-                                                .contains(&self.filter.to_lowercase())
-                                        {
-                                            continue;
-                                        }
-                                        draw_note(ui, id, &mut self.notes, &mut self.active_note);
-                                        // Safety: if note has an unknown tag, add it.
-                                        for tag in &note.tags {
-                                            if !self.tags.contains(tag) {
-                                                self.tags.push(tag.clone());
-                                            }
-                                        }
-                                    }
-                                }
-                            },
-                        )
-                    });
-                });
+            match self.viewmode {
+                ViewMode::Board => {
+                    boardview(ui, self);
+                }
+                ViewMode::List => {
+                    listview(ui, self);
+                }
+            }
 
             //create a round button at an absolute position
 
@@ -480,12 +461,12 @@ fn draw_note(
         Stroke::NONE
     };
 
-    let frame_shape = Shape::Rect(RectShape {
+    let frame_shape = Shape::Rect(RectShape::new( 
         rect,
-        rounding: 5.0.into(),
-        fill: note.get_color(),
-        stroke,
-    });
+        5.0,
+        note.get_color(),
+        stroke
+    ));
 
     let mut shapes_to_draw = vec![frame_shape];
 
@@ -499,12 +480,12 @@ fn draw_note(
         .translate(vec2(offset * i as f32, 0.0))
         .translate(vec2(-offset + 2., note_size.y - offset - 2.));
 
-        let tag_shape = Shape::Rect(RectShape {
-            rect: r,
-            rounding: 10.0.into(),
-            fill: color_from_tag(tag).gamma_multiply(0.5),
-            stroke: Stroke::NONE,
-        });
+        let tag_shape = Shape::Rect(RectShape::new(
+            r,
+            10.0,
+            color_from_tag(tag).gamma_multiply(0.5),
+            Stroke::NONE,
+        ));
         shapes_to_draw.push(tag_shape)
     }
 
@@ -555,6 +536,82 @@ fn draw_note(
     }
 }
 
+fn draw_list_note(
+    ui: &mut Ui,
+    note_id: &u128,
+    notes: &BTreeMap<u128, Note>,
+    active_note: &mut Option<u128>,
+) {
+    // make sure id is valid
+    if notes.get(note_id).is_none() {
+        ui.label("No such ID");
+        return;
+    }
+
+    let note = notes.get(note_id).unwrap();
+
+
+    // let r = ui.allocate_at_least(desired_size, sense)
+
+    let inner= ui.group(|ui| {
+        // ui.allocate_space(ui.available_size());
+        ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
+        ui.label(
+            RichText::new(note.get_title()).color(readable_text(&Color32::from_rgb(
+                note.color[0],
+                note.color[1],
+                note.color[2],
+            ))), // .size(12.)
+        );
+    });
+
+    let resp = inner.response.interact(Sense::click());
+
+    // let mut shapes_to_draw = vec![];
+
+    // for (i, tag) in note.tags.iter().enumerate().skip(1) {
+    //     let offset = 20.;
+
+    //     let r = Rect::from_min_max(
+    //         rect.left_top(),
+    //         Pos2::new(rect.left_top().x + offset, rect.left_top().y + offset),
+    //     )
+    //     .translate(vec2(offset * i as f32, 0.0))
+    //     .translate(vec2(-offset + 2., note_size.y - offset - 2.));
+
+    //     let tag_shape = Shape::Rect(RectShape {
+    //         rect: r,
+    //         rounding: 10.0.into(),
+    //         fill: color_from_tag(tag).gamma_multiply(0.5),
+    //         stroke: Stroke::NONE,
+    //     });
+    //     shapes_to_draw.push(tag_shape)
+    // }
+
+    // let shp = {
+    //     let shadow = Shadow::small_light();
+    //     let shadow = shadow.tessellate(rect, 5.0);
+    //     let shadow = Shape::Mesh(shadow);
+    //     shapes_to_draw.push(shadow);
+    //     Shape::Vec(shapes_to_draw)
+    // };
+
+    // ui.painter().add(shp);
+
+
+
+    // sub_ui.label(&note.text);
+    // sub_ui.add_space(20.);
+
+    // ui.put(rect, egui::Label::new(note.get_title()));
+
+    // });
+    // let resp = r.response.interact(egui::Sense::click());
+    if resp.clicked() {
+        *active_note = Some(*note_id);
+    }
+}
+
 /// The lower-right plus-button
 fn draw_note_add_button(ui: &mut Ui) -> Response {
     let button_size = Vec2::splat(60.);
@@ -590,4 +647,79 @@ fn encrypt_notes(notes: &BTreeMap<u128, Note>, credentials: &(String, String)) -
         // encrypt using key
         serde_json::to_string(notes).ok()
     }
+}
+
+fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
+    let mut v = Vec::from_iter(state.notes.clone());
+    v.sort_by(|(_, a), (_, b)| b.priority.total_cmp(&a.priority));
+
+    egui::ScrollArea::horizontal()
+        // .auto_shrink([false,false])
+        .hscroll(true)
+        .min_scrolled_width(ui.available_width())
+        .show(ui, |ui| {
+            ui.allocate_ui(Vec2::new(150., ui.available_size_before_wrap().y), |ui| {
+                ui.with_layout(
+                    egui::Layout::top_down(egui::Align::RIGHT).with_main_wrap(true),
+                    |ui| {
+                        // Add a lot of widgets here.
+                        for (id, note) in &v {
+                            if state.active_tags.is_empty()
+                                || note.tags.iter().any(|t| state.active_tags.contains(t))
+                            {
+                                if !state.filter.is_empty()
+                                    && !note
+                                        .text
+                                        .to_lowercase()
+                                        .contains(&state.filter.to_lowercase())
+                                {
+                                    continue;
+                                }
+                                draw_note(ui, id, &mut state.notes, &mut state.active_note);
+                                // Safety: if note has an unknown tag, add it.
+                                for tag in &note.tags {
+                                    if !state.tags.contains(tag) {
+                                        state.tags.push(tag.clone());
+                                    }
+                                }
+                            }
+                        }
+                    },
+                )
+            });
+        });
+}
+
+fn listview(ui: &mut Ui, state: &mut MeteoraApp) {
+    let mut v = Vec::from_iter(state.notes.clone());
+    v.sort_by(|(_, a), (_, b)| b.priority.total_cmp(&a.priority));
+
+    egui::ScrollArea::vertical()
+        // .auto_shrink([false,false])
+        // .min_scrolled_width(ui.available_width())
+        .show(ui, |ui| {
+            for (id, note) in &v {
+                if state.active_tags.is_empty()
+                    || note.tags.iter().any(|t| state.active_tags.contains(t))
+                {
+                    if !state.filter.is_empty()
+                        && !note
+                            .text
+                            .to_lowercase()
+                            .contains(&state.filter.to_lowercase())
+                    {
+                        continue;
+                    }
+
+                    draw_list_note(ui, id, &mut state.notes, &mut state.active_note);
+
+                    // Safety: if note has an unknown tag, add it.
+                    for tag in &note.tags {
+                        if !state.tags.contains(tag) {
+                            state.tags.push(tag.clone());
+                        }
+                    }
+                }
+            }
+        });
 }
