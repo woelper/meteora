@@ -26,7 +26,7 @@ https://woelper.github.io/meteora/
 - [ ] show progress based on checkboxes
 - [ ] Markup toggle or detection / bug: commonmark renders strangely.
 - [ ] Custom basic markup
-- [ ] Note encryption
+- [X] Note encryption
 - [X] Tag buttons on top of note view
 - [X] Always on top
 - [X] Tag colors in sidebar should match note colors
