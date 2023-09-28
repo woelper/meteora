@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210mm"
+   height="297mm"
+   viewBox="0 0 210 297"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.3 (0e150ed, 2023-07-21)"
+   sodipodi:docname="logo.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="4.1509418"
+     inkscape:cx="338.83877"
+     inkscape:cy="605.52524"
+     inkscape:window-width="1456"
+     inkscape:window-height="798"
+     inkscape:window-x="0"
+     inkscape:window-y="38"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <rect
+       x="109.18809"
+       y="269.44804"
+       width="630.47319"
+       height="471.97434"
+       id="rect2" />
+    <rect
+       x="102.1437"
+       y="294.10341"
+       width="510.7185"
+       height="368.06954"
+       id="rect1" />
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <circle
+       style="fill:#f2f2f2;fill-opacity:1;stroke:none;stroke-width:3.2518"
+       id="path4"
+       cx="83.331665"
+       cy="156.56001"
+       r="8.1456995" />
+    <text
+       xml:space="preserve"
+       transform="scale(0.26458333)"
+       id="text1"
+       style="fill:#1a1a1a;-inkscape-font-specification:Futura;font-family:Futura;stroke:#f9f9f9;stroke-width:8.56062992;fill-opacity:1;white-space:pre;shape-inside:url(#rect1)" />
+    <text
+       xml:space="preserve"
+       transform="scale(0.26458333)"
+       id="text2"
+       style="fill:#1a1a1a;-inkscape-font-specification:Futura;font-family:Futura;stroke:#f9f9f9;stroke-width:8.56062992;fill-opacity:1;white-space:pre;shape-inside:url(#rect2);font-size:37.3333338px" />
+    <text
+       xml:space="preserve"
+       style="font-size:9.87777px;font-family:Futura;-inkscape-font-specification:Futura;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.265"
+       x="78.746773"
+       y="162.61908"
+       id="text3"><tspan
+         sodipodi:role="line"
+         id="tspan3"
+         style="stroke-width:2.265"
+         x="78.746773"
+         y="162.61908">M</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:9.87777px;font-family:Futura;-inkscape-font-specification:Futura;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.265"
+       x="-87.20533"
+       y="-150.37151"
+       id="text4"
+       transform="scale(-1)"><tspan
+         sodipodi:role="line"
+         id="tspan4"
+         style="stroke-width:2.265"
+         x="-87.20533"
+         y="-150.37151">A</tspan></text>
+  </g>
+</svg>
