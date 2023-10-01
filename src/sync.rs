@@ -6,7 +6,7 @@ use std::{collections::BTreeMap, fs::write, path::PathBuf};
 
 use crate::Note;
 
-#[derive(serde::Deserialize, serde::Serialize, Debug, PartialEq, Eq)]
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub enum StorageMode {
     Local {
         path: PathBuf,
@@ -17,7 +17,16 @@ pub enum StorageMode {
     },
 }
 
-pub struct JsonBinResponse {}
+impl std::fmt::Debug for StorageMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            StorageMode::Local { .. } => write!(f, "Local"),
+            StorageMode::JsonBin { .. } => write!(f, "JsonBin"),
+        }
+    }
+}
+
+
 
 impl StorageMode {
     pub fn save_notes(
@@ -93,17 +102,40 @@ impl StorageMode {
                 #[cfg(not(target_arch = "wasm32"))]
                 if path.exists() {
                     if let Ok(encrypted_notes) = std::fs::read_to_string(path) {
-                        if let Ok(notes) = decrypt_notes(&encrypted_notes, &credentials) {
+                        let notes = decrypt_notes(&encrypted_notes, credentials)?;
                             dbg!("Decrypted notes");
                             return Ok(notes);
-                        }
+                        
                     } else {
                         // TODO: send toast
-                        println!("Can't load notes");
+                        println!("Can't load notes from disk");
                     }
                 }
             }
-            StorageMode::JsonBin { masterkey, bin_id } => {}
+            StorageMode::JsonBin { masterkey, bin_id } => {
+
+                let url = "https://api.jsonbin.io/v3/b";
+
+
+                   
+                    let bin_id = bin_id.clone().context("Bin id is needed for loading")?;
+                    // rewrite bin url with bin id
+                    let bin_url = format!("{url}/{bin_id}?meta=false");
+                    let client = reqwest::blocking::Client::new();
+
+                    let res = client
+                        .get(bin_url)
+                        .header("X-Master-Key", masterkey.clone())
+                        .send()?;
+
+                    if !res.status().is_success() {
+                        bail!("Error {:?}", res.text())
+                    }
+
+                    let n :BTreeMap<u128, Note> = res.json()?;
+                    return Ok(n);
+
+            }
         }
         bail!("Could not load notes")
     }

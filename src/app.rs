@@ -110,14 +110,8 @@ impl eframe::App for MeteoraApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
         {
-            match &self.storage_mode {
-                StorageMode::Local { path } => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    if let Ok(enc) = encrypt_notes(&self.notes, &self.credentials) {
-                        _ = write(path, enc);
-                    }
-                }
-                StorageMode::JsonBin { masterkey, bin_id } => {}
+            if let Err(e) = self.storage_mode.save_notes(&self.notes, &self.credentials) {
+                eprintln!("{e}")
             }
         }
     }
@@ -133,17 +127,18 @@ impl eframe::App for MeteoraApp {
                     }
                     global_dark_light_mode_buttons(ui);
                     if ui.button("Save").clicked() {
-                        if let Err(e) = self.storage_mode.save_notes(&self.notes, &self.credentials) {
+                        if let Err(e) = self.storage_mode.save_notes(&self.notes, &self.credentials)
+                        {
                             eprintln!("{e}")
                         }
                     }
 
                     if ui.button("Restore").clicked() {
-                        if let Ok(notes) = self.storage_mode.load_notes(&self.credentials) {
-                            self.notes = notes;
-                        } else {
-                            // TODO: send toast
-                            println!("Can't load notes");
+                        match self.storage_mode.load_notes(&self.credentials) {
+                            Ok(notes) => {
+                                self.notes = notes;
+                            }
+                            Err(e) => eprintln!("Can't restore: {e}"),
                         }
                     }
                 });
@@ -285,11 +280,11 @@ impl eframe::App for MeteoraApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Offer restore fuctionality
             if self.notes.is_empty() {
-                if let Ok(notes) = self.storage_mode.load_notes(&self.credentials) {
-                    self.notes = notes;
-                } else {
-                    // TODO: send toast
-                    println!("Can't load notes");
+                match self.storage_mode.load_notes(&self.credentials) {
+                    Ok(notes) => {
+                        self.notes = notes;
+                    }
+                    Err(e) => eprintln!("Can't load notes {e}"),
                 }
             }
 
