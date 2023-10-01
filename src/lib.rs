@@ -4,3 +4,5 @@ mod app;
 pub use app::MeteoraApp;
 mod notes;
 pub use notes::*;
+mod sync;
+pub use sync::*;

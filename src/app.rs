@@ -1,15 +1,18 @@
-use std::{collections::BTreeMap, fs::write, path::Path};
+use std::{
+    collections::BTreeMap,
+    fs::write,
+    path::{Path, PathBuf},
+};
 
-use crate::{color_from_tag, link_text, readable_text, Deadline, Note};
+use crate::{
+    color_from_tag, decrypt_notes, encrypt_notes, link_text, readable_text, Deadline, Note,
+    StorageMode,
+};
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow},
     global_dark_light_mode_buttons, vec2, Color32, ComboBox, FontData, FontFamily, FontId, Layout,
     Pos2, Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
-
-use anyhow::Result;
-use magic_crypt::{new_magic_crypt, MagicCryptTrait};
-
 
 // use egui_commonmark::*;
 
@@ -18,21 +21,28 @@ pub enum ViewMode {
     #[default]
     Board,
     List,
-    Graph
+    Graph,
 }
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct MeteoraApp {
+    /// All notes
     notes: BTreeMap<u128, Note>,
     tags: Vec<String>,
     active_tags: HashSet<String>,
     active_note: Option<u128>,
+    /// Authentication/encryption
     credentials: (String, String),
-    temp_name: Option<String>,
+    /// Convenience buffer to edit strings
+    temp_string: Option<String>,
+    /// The search filter
     filter: String,
+    /// How notes are displayed
     viewmode: ViewMode,
+    /// How data is stored
+    storage_mode: StorageMode,
 }
 
 impl MeteoraApp {
@@ -99,10 +109,15 @@ impl MeteoraApp {
 impl eframe::App for MeteoraApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
-        #[cfg(not(target_arch = "wasm32"))]
         {
-            if let Ok(enc) = encrypt_notes(&self.notes, &self.credentials) {
-                _ = write("backup.json", enc);
+            match &self.storage_mode {
+                StorageMode::Local { path } => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if let Ok(enc) = encrypt_notes(&self.notes, &self.credentials) {
+                        _ = write(path, enc);
+                    }
+                }
+                StorageMode::JsonBin { masterkey, bin_id } => {}
             }
         }
     }
@@ -118,25 +133,15 @@ impl eframe::App for MeteoraApp {
                     }
                     global_dark_light_mode_buttons(ui);
                     if ui.button("Save").clicked() {
-                        if let Ok(enc) = encrypt_notes(&self.notes, &self.credentials) {
-                            _ = write("backup.json", enc);
-                        }
+                        self.storage_mode.save_notes(&self.notes, &self.credentials);
                     }
 
                     if ui.button("Restore").clicked() {
-                        let p = Path::new("backup.json");
-                        if p.exists() {
-                            if let Ok(encrypted_notes) = std::fs::read_to_string("backup.json") {
-                                if let Ok(notes) =
-                                    decrypt_notes(&encrypted_notes, &self.credentials)
-                                {
-                                    dbg!("Decrypted notes");
-                                    self.notes = notes;
-                                }
-                            } else {
-                                // TODO: send toast
-                                println!("Can't load notes");
-                            }
+                        if let Ok(notes) = self.storage_mode.load_notes(&self.credentials) {
+                            self.notes = notes;
+                        } else {
+                            // TODO: send toast
+                            println!("Can't load notes");
                         }
                     }
                 });
@@ -234,28 +239,55 @@ impl eframe::App for MeteoraApp {
                             .hint_text("Encryption Key"),
                     );
 
-                    egui::ComboBox::from_label("Select one!")
+                    egui::ComboBox::from_label("View mode")
                         .selected_text(format!("{:?}", self.viewmode))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut self.viewmode, ViewMode::Board, "Board");
                             ui.selectable_value(&mut self.viewmode, ViewMode::List, "List");
                             ui.selectable_value(&mut self.viewmode, ViewMode::Graph, "Graph");
                         });
+
+                    egui::ComboBox::from_label("Storage mode")
+                        .selected_text(format!("{:?}", self.storage_mode))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.storage_mode,
+                                StorageMode::Local {
+                                    path: PathBuf::from("backup.json"),
+                                },
+                                "Local",
+                            );
+                            ui.selectable_value(
+                                &mut self.storage_mode,
+                                StorageMode::JsonBin {
+                                    masterkey: include_str!("../key.jsonbin.master").into(),
+                                    bin_id: None,
+                                },
+                                "JsonBin",
+                            );
+                        });
+
+                    match &mut self.storage_mode {
+                        StorageMode::Local { path } => {
+                            let mut s = path.to_string_lossy().to_string();
+                            if ui.text_edit_singleline(&mut s).changed() {
+                                *path = PathBuf::from(s);
+                            }
+                        }
+                        StorageMode::JsonBin { masterkey, bin_id } => {}
+                    }
                 });
             });
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // Offer restore fuctionality
-            #[cfg(not(target_arch = "wasm32"))]
             if self.notes.is_empty() {
-                let p = Path::new("backup.json");
-                if p.exists() && ui.button("Backup file detected. Restore?").clicked() {
-                    if let Ok(encrypted_notes) = std::fs::read_to_string("backup.json") {
-                        if let Ok(notes) = decrypt_notes(&encrypted_notes, &self.credentials) {
-                            self.notes = notes;
-                        }
-                    }
+                if let Ok(notes) = self.storage_mode.load_notes(&self.credentials) {
+                    self.notes = notes;
+                } else {
+                    // TODO: send toast
+                    println!("Can't load notes");
                 }
             }
 
@@ -471,12 +503,7 @@ fn draw_note(
         Stroke::NONE
     };
 
-    let frame_shape = Shape::Rect(RectShape::new( 
-        rect,
-        5.0,
-        note.get_color(),
-        stroke
-    ));
+    let frame_shape = Shape::Rect(RectShape::new(rect, 5.0, note.get_color(), stroke));
 
     let mut shapes_to_draw = vec![frame_shape];
 
@@ -560,10 +587,9 @@ fn draw_list_note(
 
     let note = notes.get(note_id).unwrap();
 
-
     // let r = ui.allocate_at_least(desired_size, sense)
 
-    let inner= ui.group(|ui| {
+    let inner = ui.group(|ui| {
         // ui.allocate_space(ui.available_size());
         ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
         ui.label(
@@ -608,8 +634,6 @@ fn draw_list_note(
 
     // ui.painter().add(shp);
 
-
-
     // sub_ui.label(&note.text);
     // sub_ui.add_space(20.);
 
@@ -637,33 +661,6 @@ fn draw_note_add_button(ui: &mut Ui) -> Response {
             .rounding(100.)
             .fill(Color32::from_rgba_premultiplied(50, 50, 50, 100)),
     )
-}
-
-fn decrypt_notes(raw_notes: &str, credentials: &(String, String)) -> Result<BTreeMap<u128, Note>> {
-    if credentials.1.is_empty() {
-        // no encryption
-        Ok(serde_json::from_str(raw_notes)?)
-    } else {
-        // encrypt using key
-        let mc = new_magic_crypt!(&credentials.1, 256);
-        let d = mc.decrypt_base64_to_string(raw_notes)?;
-        dbg!("decrypted with ", credentials);
-        Ok(serde_json::from_str(&d)?)
-    }
-}
-
-fn encrypt_notes(notes: &BTreeMap<u128, Note>, credentials: &(String, String)) -> Result<String> {
-    if credentials.1.is_empty() {
-        // no encryption
-        Ok(serde_json::to_string_pretty(notes)?)
-
-    } else {
-        // encrypt using key
-        let mc = new_magic_crypt!(&credentials.1, 256);
-        Ok(mc.encrypt_str_to_base64(serde_json::to_string(notes)?))
-    }
-
-    
 }
 
 fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
