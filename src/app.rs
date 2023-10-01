@@ -133,7 +133,9 @@ impl eframe::App for MeteoraApp {
                     }
                     global_dark_light_mode_buttons(ui);
                     if ui.button("Save").clicked() {
-                        self.storage_mode.save_notes(&self.notes, &self.credentials);
+                        if let Err(e) = self.storage_mode.save_notes(&self.notes, &self.credentials) {
+                            eprintln!("{e}")
+                        }
                     }
 
                     if ui.button("Restore").clicked() {
