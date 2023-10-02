@@ -158,28 +158,18 @@ pub fn decrypt_notes(
     raw_notes: &str,
     credentials: &(String, String),
 ) -> Result<BTreeMap<u128, Note>> {
-    if credentials.1.is_empty() {
-        // no encryption
-        Ok(serde_json::from_str(raw_notes)?)
-    } else {
-        // encrypt using key
-        let mc = new_magic_crypt!(&credentials.1, 256);
-        let d = mc.decrypt_base64_to_string(raw_notes)?;
-        dbg!("decrypted with ", credentials);
-        Ok(serde_json::from_str(&d)?)
-    }
+    // encrypt using key
+    let mc = new_magic_crypt!(&credentials.1, 256);
+    let d = mc.decrypt_base64_to_string(raw_notes)?;
+    dbg!("decrypted with ", credentials);
+    Ok(serde_json::from_str(&d)?)
 }
 
 pub fn encrypt_notes(
     notes: &BTreeMap<u128, Note>,
     credentials: &(String, String),
 ) -> Result<String> {
-    if credentials.1.is_empty() {
-        // no encryption
-        Ok(serde_json::to_string_pretty(notes)?)
-    } else {
-        // encrypt using key
-        let mc = new_magic_crypt!(&credentials.1, 256);
-        Ok(mc.encrypt_str_to_base64(serde_json::to_string(notes)?))
-    }
+    // encrypt using key
+    let mc = new_magic_crypt!(&credentials.1, 256);
+    Ok(mc.encrypt_str_to_base64(serde_json::to_string(notes)?))
 }
