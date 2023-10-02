@@ -26,8 +26,6 @@ impl std::fmt::Debug for StorageMode {
     }
 }
 
-
-
 impl StorageMode {
     pub fn save_notes(
         &mut self,
@@ -43,23 +41,29 @@ impl StorageMode {
                 }
             }
             StorageMode::JsonBin { masterkey, bin_id } => {
+                // rewrite notes so we can encrypt them
+                let notes = json!({
+                    "encrypted": encrypt_notes(notes, credentials)?
+                });
+
                 let url = "https://api.jsonbin.io/v3/b";
 
+                // no bin configured, we need to ask for one
                 if bin_id.is_none() {
                     let client = reqwest::blocking::Client::new();
 
                     let res = client
                         .post(url)
                         .header("X-Master-Key", masterkey.clone())
-                        .json(notes)
+                        .json(&notes)
                         .send()?;
 
                     if !res.status().is_success() {
                         bail!("Error {:?}", res.text())
                     }
 
+                    // We only need the ID of the bin...
                     let val: serde_json::Value = res.json()?;
-
                     let id = val
                         .as_object()
                         .context("no object")?
@@ -72,8 +76,6 @@ impl StorageMode {
                         .as_str()
                         .context("can't get id string")?;
                     *bin_id = Some(id.into());
-
-                    // dbg!(id);
                 } else {
                     // safe, since we checked if the Option is Some
                     let bin_id = bin_id.clone().unwrap_or_default();
@@ -84,7 +86,7 @@ impl StorageMode {
                     let res = client
                         .put(bin_url)
                         .header("X-Master-Key", masterkey.clone())
-                        .json(notes)
+                        .json(&notes)
                         .send()?;
 
                     if !res.status().is_success() {
@@ -98,43 +100,47 @@ impl StorageMode {
 
     pub fn load_notes(&self, credentials: &(String, String)) -> Result<BTreeMap<u128, Note>> {
         match self {
+            // Disk mode
             StorageMode::Local { path } => {
                 #[cfg(not(target_arch = "wasm32"))]
                 if path.exists() {
                     if let Ok(encrypted_notes) = std::fs::read_to_string(path) {
                         let notes = decrypt_notes(&encrypted_notes, credentials)?;
-                            dbg!("Decrypted notes");
-                            return Ok(notes);
-                        
+                        dbg!("Decrypted notes");
+                        return Ok(notes);
                     } else {
                         // TODO: send toast
                         println!("Can't load notes from disk");
                     }
                 }
             }
+            // JsonBin
             StorageMode::JsonBin { masterkey, bin_id } => {
-
                 let url = "https://api.jsonbin.io/v3/b";
+                let bin_id = bin_id.clone().context("Bin ID is needed for loading!")?;
+                // rewrite bin url with bin id
+                let bin_url = format!("{url}/{bin_id}?meta=false");
+                let client = reqwest::blocking::Client::new();
+                let res = client
+                    .get(bin_url)
+                    .header("X-Master-Key", masterkey.clone())
+                    .send()?;
+                if !res.status().is_success() {
+                    bail!("Error {:?}", res.text())
+                }
+                let n: serde_json::Value = res.json()?;
+                let decrypted_notes = decrypt_notes(
+                    n.as_object()
+                        .context("notes must be obj")?
+                        .get("encrypted")
+                        .context("There must be an 'encrypted' key")?
+                        .as_str()
+                        .context("The value must be string")?,
+                    credentials,
+                )?;
 
-
-                   
-                    let bin_id = bin_id.clone().context("Bin id is needed for loading")?;
-                    // rewrite bin url with bin id
-                    let bin_url = format!("{url}/{bin_id}?meta=false");
-                    let client = reqwest::blocking::Client::new();
-
-                    let res = client
-                        .get(bin_url)
-                        .header("X-Master-Key", masterkey.clone())
-                        .send()?;
-
-                    if !res.status().is_success() {
-                        bail!("Error {:?}", res.text())
-                    }
-
-                    let n :BTreeMap<u128, Note> = res.json()?;
-                    return Ok(n);
-
+                // let n: BTreeMap<u128, Note> = serde_json::from_value(n)?;
+                return Ok(decrypted_notes);
             }
         }
         bail!("Could not load notes")
