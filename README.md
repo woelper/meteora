@@ -27,6 +27,7 @@ https://woelper.github.io/meteora/
 - [ ] Markup toggle or detection / bug: commonmark renders strangely.
 - [ ] Custom basic markup
 - [ ] Get rid of username
+- [ ] Simplify local encryption (remove check if credetials are used)
 - [X] Try tag cloud in collapsible header instead of tag dropdown
 - [X] Tag deletion
 - [X] Note encryption
