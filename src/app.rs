@@ -1,17 +1,10 @@
-use std::{
-    collections::BTreeMap,
-    fs::write,
-    path::{Path, PathBuf},
-};
+use std::{collections::BTreeMap, path::PathBuf};
 
-use crate::{
-    color_from_tag, decrypt_notes, encrypt_notes, link_text, readable_text, Deadline, Note,
-    StorageMode,
-};
+use crate::{color_from_tag, link_text, readable_text, Deadline, Note, StorageMode};
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow},
-    global_dark_light_mode_buttons, vec2, Color32, ComboBox, FontData, FontFamily, FontId, Layout,
-    Pos2, Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
+    global_dark_light_mode_buttons, vec2, Color32, FontData, FontFamily, FontId, Id, Layout, Pos2,
+    Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
 
 // use egui_commonmark::*;
@@ -35,8 +28,6 @@ pub struct MeteoraApp {
     active_note: Option<u128>,
     /// Authentication/encryption
     credentials: (String, String),
-    /// Convenience buffer to edit strings
-    temp_string: Option<String>,
     /// The search filter
     filter: String,
     /// How notes are displayed
@@ -271,7 +262,16 @@ impl eframe::App for MeteoraApp {
                                 *path = PathBuf::from(s);
                             }
                         }
-                        StorageMode::JsonBin { masterkey, bin_id } => {}
+                        StorageMode::JsonBin {
+                            masterkey: _,
+                            bin_id,
+                        } => {
+                            if bin_id.is_none() {
+                                ui.label("Your data has never been published.");
+                            } else {
+                                ui.label(format!("Bin ID: {}", bin_id.clone().unwrap_or_default()));
+                            }
+                        }
                     }
                 });
             });
@@ -350,7 +350,12 @@ impl eframe::App for MeteoraApp {
     }
 }
 
-fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeMap<u128, Note>) {
+fn edit_note(
+    ui: &mut Ui,
+    note_id: &u128,
+    tags: &mut Vec<String>,
+    notes: &mut BTreeMap<u128, Note>,
+) {
     // make sure id is valid
     if notes.get(note_id).is_none() {
         ui.label("No such ID");
@@ -414,7 +419,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
         ui.allocate_space(vec2(ui.available_width(), 0.));
         ui.horizontal(|ui| {
             ui.label("Tags:");
-            for tag in tags {
+            for tag in tags.iter() {
                 let contains = note.tags.contains(tag);
                 ui.style_mut().visuals.selection.bg_fill = color_from_tag(tag).gamma_multiply(0.5);
                 if ui.selectable_label(contains, tag.to_string()).clicked() {
@@ -426,6 +431,24 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
                 }
             }
         });
+
+        let id = Id::new("newtag");
+        if ui.button("Add tag...").clicked() {
+            ui.ctx()
+                .memory_mut(|w| w.data.insert_temp(id, "New Tag".to_string()));
+        }
+
+        let newtag = ui.ctx().memory_mut(|w| w.data.get_temp::<String>(id));
+        if let Some(tag) = newtag {
+            let mut tag = tag;
+            if ui.text_edit_singleline(&mut tag).changed() {
+                ui.ctx().memory_mut(|w| w.data.insert_temp(id, tag.clone()));
+            }
+            if ui.button("Save").clicked() {
+                tags.push(tag.clone());
+                ui.ctx().memory_mut(|w| w.data.clear());
+            }
+        }
     });
 
     ui.horizontal(|ui| {
@@ -434,7 +457,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &Vec<String>, notes: &mut BTreeM
         egui::ComboBox::from_id_source(note.id)
             .selected_text("Select tag".to_string())
             .show_ui(ui, |ui| {
-                for tag in tags {
+                for tag in tags.iter() {
                     let contains = note.tags.contains(tag);
                     if ui.selectable_label(contains, tag.to_string()).clicked() {
                         if contains {

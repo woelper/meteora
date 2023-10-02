@@ -6,7 +6,10 @@
 fn main() -> eframe::Result<()> {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
-    let mut native_options = eframe::NativeOptions { always_on_top: true, ..Default::default() };
+    let native_options = eframe::NativeOptions {
+        always_on_top: true,
+        ..Default::default()
+    };
 
     eframe::run_native(
         "Meteora",

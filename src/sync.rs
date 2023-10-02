@@ -1,6 +1,5 @@
 use anyhow::{bail, Context, Result};
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
-use reqwest::{blocking::ClientBuilder, header::CONTENT_TYPE};
 use serde_json::json;
 use std::{collections::BTreeMap, fs::write, path::PathBuf};
 
@@ -18,7 +17,7 @@ pub enum StorageMode {
 }
 
 impl std::fmt::Debug for StorageMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             StorageMode::Local { .. } => write!(f, "Local"),
             StorageMode::JsonBin { .. } => write!(f, "JsonBin"),

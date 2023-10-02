@@ -58,12 +58,15 @@ impl Note {
     }
     pub fn get_color(&self) -> Color32 {
         if self.tags.is_empty() {
-            Color32::from_rgb(self.color[0], self.color[1], self.color[2])
-            .gamma_multiply(0.5)
+            Color32::from_rgb(self.color[0], self.color[1], self.color[2]).gamma_multiply(0.5)
         } else {
-            let s = self.tags.clone().into_iter().collect::<Vec<String>>().join("");
-            color_from_tag(&s)
-            .gamma_multiply(0.5)
+            let s = self
+                .tags
+                .clone()
+                .into_iter()
+                .collect::<Vec<String>>()
+                .join("");
+            color_from_tag(&s).gamma_multiply(0.5)
         }
     }
     pub fn get_links(&self) -> Vec<&str> {
