@@ -6,6 +6,7 @@ use egui::{
     global_dark_light_mode_buttons, vec2, Color32, FontData, FontFamily, FontId, Id, Layout, Pos2,
     Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
+use egui_notify::Toasts;
 
 // use egui_commonmark::*;
 
@@ -34,6 +35,8 @@ pub struct MeteoraApp {
     viewmode: ViewMode,
     /// How data is stored
     storage_mode: StorageMode,
+    #[serde(skip)]
+    toasts: Toasts,
 }
 
 impl MeteoraApp {
@@ -120,17 +123,24 @@ impl eframe::App for MeteoraApp {
                     if ui.button("Save").clicked() {
                         if let Err(e) = self.storage_mode.save_notes(&self.notes, &self.credentials)
                         {
-                            eprintln!("{e}")
+                            self.toasts.error(format!("Error saving notes! {e}"));
+                        } else {
+                            self.toasts.info("Saved!".to_string());
                         }
+                        ui.close_menu();
                     }
 
                     if ui.button("Restore").clicked() {
                         match self.storage_mode.load_notes(&self.credentials) {
                             Ok(notes) => {
                                 self.notes = notes;
+                                self.toasts.info("Loaded notes!");
                             }
-                            Err(e) => eprintln!("Can't restore: {e}"),
+                            Err(e) => {
+                                self.toasts.error(format!("Error restoring notes! {e}"));
+                            }
                         }
+                        ui.close_menu();
                     }
                 });
             });
@@ -268,11 +278,21 @@ impl eframe::App for MeteoraApp {
                         } => {
                             if bin_id.is_none() {
                                 ui.label("Your data has never been published.");
+
+                                if ui.button("Publish now").clicked() {
+                                    if let Err(e) =
+                                        self.storage_mode.save_notes(&self.notes, &self.credentials)
+                                    {
+                                        self.toasts.error(format!("Error publishing notes! {e}"));
+                                    }
+                                }
                             } else {
                                 ui.label(format!("Bin ID: {}", bin_id.clone().unwrap_or_default()));
                             }
                         }
                     }
+
+                    global_dark_light_mode_buttons(ui);
                 });
             });
         });
@@ -284,7 +304,9 @@ impl eframe::App for MeteoraApp {
                     Ok(notes) => {
                         self.notes = notes;
                     }
-                    Err(e) => eprintln!("Can't load notes {e}"),
+                    Err(e) => {
+                        self.toasts.info(format!("Can't load notes: {e}"));
+                    }
                 }
             }
 
@@ -345,6 +367,8 @@ impl eframe::App for MeteoraApp {
                     });
                 });
         }
+
+        self.toasts.show(ctx);
 
         // });
     }

@@ -102,15 +102,15 @@ impl StorageMode {
             // Disk mode
             StorageMode::Local { path } => {
                 #[cfg(not(target_arch = "wasm32"))]
-                if path.exists() {
-                    if let Ok(encrypted_notes) = std::fs::read_to_string(path) {
-                        let notes = decrypt_notes(&encrypted_notes, credentials)?;
-                        dbg!("Decrypted notes");
-                        return Ok(notes);
-                    } else {
-                        // TODO: send toast
-                        println!("Can't load notes from disk");
-                    }
+                {
+                    let encrypted_notes = std::fs::read_to_string(path)?;
+                    let notes = decrypt_notes(&encrypted_notes, credentials)?;
+                    Ok(notes)
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    // wasm should err here
+                    bail!("Could not load notes")
                 }
             }
             // JsonBin
@@ -139,10 +139,9 @@ impl StorageMode {
                 )?;
 
                 // let n: BTreeMap<u128, Note> = serde_json::from_value(n)?;
-                return Ok(decrypted_notes);
+                Ok(decrypted_notes)
             }
         }
-        bail!("Could not load notes")
     }
 }
 

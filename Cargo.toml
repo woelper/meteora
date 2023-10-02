@@ -16,6 +16,7 @@ eframe = { version = "0.23", default-features = false, features = [
 ] }
 log = "0.4"
 egui_extras = { version = "0.23", features = ["datepicker"] }
+egui-notify = "0.10"
 getrandom = { version = "0.2", features = ["js"] }
 
 chrono = { version = "*", features = ["wasmbind", "serde"] }
