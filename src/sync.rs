@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use ehttp::headers;
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 use serde_json::json;
 use std::{collections::BTreeMap, fs::write, path::PathBuf};
@@ -49,6 +50,27 @@ impl StorageMode {
 
                 // no bin configured, we need to ask for one
                 if bin_id.is_none() {
+
+                    let request = ehttp::Request{
+                        method: "POST".into(),
+                        url: url.into(),
+                        body: notes.to_string().into_bytes(),
+                        headers: headers(&[
+                            ("Accept", "*/*"),
+                            ("Content-Type", "application/json; charset=utf-8"),
+                            ("X-Master-Key", masterkey),
+                        ])
+                    };
+                    ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
+                        
+                      
+                        
+                        println!("Status code: {:?}", result.unwrap().text());
+
+                        
+                        // println!("Status code: {:?}", result.unwrap().status);
+                    });
+                    
                     let client = reqwest::blocking::Client::new();
 
                     let res = client

@@ -876,6 +876,7 @@ dependencies = [
  "egui-notify",
  "egui_commonmark",
  "egui_extras",
+ "ehttp",
  "env_logger",
  "getrandom",
  "log",

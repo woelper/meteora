@@ -355,7 +355,7 @@ impl eframe::App for MeteoraApp {
                 let rect_all = ui.allocate_rect(Rect::EVERYTHING, Sense::click());
                 ui.painter_at(Rect::EVERYTHING).rect_filled(
                     Rect::EVERYTHING,
-                    Rounding::none(),
+                    Rounding::ZERO,
                     Color32::from_rgba_premultiplied(0, 0, 0, 150),
                 );
 
