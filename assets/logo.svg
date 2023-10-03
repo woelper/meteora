@@ -56,17 +56,20 @@
        id="path4"
        cx="83.331665"
        cy="156.56001"
-       r="8.1456995" />
+       r="8.1456995"
+       inkscape:export-filename="maskable_icon_x512.png"
+       inkscape:export-xdpi="798.26172"
+       inkscape:export-ydpi="798.26172" />
     <text
        xml:space="preserve"
        transform="scale(0.26458333)"
        id="text1"
-       style="fill:#1a1a1a;-inkscape-font-specification:Futura;font-family:Futura;stroke:#f9f9f9;stroke-width:8.56062992;fill-opacity:1;white-space:pre;shape-inside:url(#rect1)" />
+       style="font-family:Futura;-inkscape-font-specification:Futura;white-space:pre;shape-inside:url(#rect1);display:inline;fill:#1a1a1a;fill-opacity:1;stroke:#f9f9f9;stroke-width:8.56063" />
     <text
        xml:space="preserve"
        transform="scale(0.26458333)"
        id="text2"
-       style="fill:#1a1a1a;-inkscape-font-specification:Futura;font-family:Futura;stroke:#f9f9f9;stroke-width:8.56062992;fill-opacity:1;white-space:pre;shape-inside:url(#rect2);font-size:37.3333338px" />
+       style="font-size:37.3333px;font-family:Futura;-inkscape-font-specification:Futura;white-space:pre;shape-inside:url(#rect2);display:inline;fill:#1a1a1a;fill-opacity:1;stroke:#f9f9f9;stroke-width:8.56063" />
     <text
        xml:space="preserve"
        style="font-size:9.87777px;font-family:Futura;-inkscape-font-specification:Futura;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.265"
