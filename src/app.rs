@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeMap,
     path::PathBuf,
-    sync::mpsc::{Receiver, Sender, channel},
+    sync::mpsc::{channel, Receiver, Sender},
 };
 
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note, StorageMode};
@@ -45,6 +45,8 @@ pub struct MeteoraApp {
     toasts: Toasts,
     #[serde(skip)]
     note_channel: (Sender<Notes>, Receiver<Notes>),
+    #[serde(skip)]
+    id_channel: (Sender<String>, Receiver<String>),
 }
 
 impl Default for MeteoraApp {
@@ -60,6 +62,7 @@ impl Default for MeteoraApp {
             storage_mode: Default::default(),
             toasts: Default::default(),
             note_channel: channel(),
+            id_channel: channel(),
         }
     }
 }
@@ -129,13 +132,38 @@ impl eframe::App for MeteoraApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
         {
-            if let Err(e) = self.storage_mode.save_notes(&self.notes, &self.credentials) {
+            if let Err(e) = self.storage_mode.save_notes(
+                &self.notes,
+                &self.credentials,
+                self.note_channel.0.clone(),
+                self.id_channel.0.clone(),
+            ) {
                 eprintln!("{e}")
             }
         }
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+
+
+        if let Ok(id) = self.id_channel.1.try_recv() {
+            match &mut self.storage_mode {
+                StorageMode::Local { .. } => {
+                    self.credentials.0 = id;
+                },
+                StorageMode::JsonBin { bin_id, .. } => {
+
+                    *bin_id = Some(id);
+                    self.toasts.info("Registered JsonBin.".to_string());
+
+                },
+            }
+        }
+
+        if let Ok(notes) = self.note_channel.1.try_recv() {
+            self.notes = notes;
+        }
+
         #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // The top panel is often a good place for a menu bar:
@@ -146,8 +174,12 @@ impl eframe::App for MeteoraApp {
                     }
                     global_dark_light_mode_buttons(ui);
                     if ui.button("Save").clicked() {
-                        if let Err(e) = self.storage_mode.save_notes(&self.notes, &self.credentials)
-                        {
+                        if let Err(e) = self.storage_mode.save_notes(
+                            &self.notes,
+                            &self.credentials,
+                            self.note_channel.0.clone(),
+                            self.id_channel.0.clone(),
+                        ) {
                             self.toasts.error(format!("Error saving notes! {e}"));
                         } else {
                             self.toasts.info("Saved!".to_string());
@@ -156,9 +188,8 @@ impl eframe::App for MeteoraApp {
                     }
 
                     if ui.button("Restore").clicked() {
-                        match self.storage_mode.load_notes(&self.credentials) {
-                            Ok(notes) => {
-                                self.notes = notes;
+                        match self.storage_mode.load_notes(&self.credentials, self.note_channel.0.clone()) {
+                            Ok(_) => {
                                 self.toasts.info("Loaded notes!");
                             }
                             Err(e) => {
@@ -299,9 +330,12 @@ impl eframe::App for MeteoraApp {
                                 ui.label("Your data has never been published.");
 
                                 if ui.button("Publish now").clicked() {
-                                    if let Err(e) =
-                                        self.storage_mode.save_notes(&self.notes, &self.credentials)
-                                    {
+                                    if let Err(e) = self.storage_mode.save_notes(
+                                        &self.notes,
+                                        &self.credentials,
+                                        self.note_channel.0.clone(),
+                                        self.id_channel.0.clone(),
+                                    ) {
                                         self.toasts.error(format!("Error publishing notes! {e}"));
                                     }
                                 }
@@ -319,12 +353,13 @@ impl eframe::App for MeteoraApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Offer restore fuctionality
             if self.notes.is_empty() {
-                match self.storage_mode.load_notes(&self.credentials) {
+                match self.storage_mode.load_notes(&self.credentials, self.note_channel.0.clone()) {
                     Ok(notes) => {
-                        self.notes = notes;
+                        self.toasts.info("Loaded notes");
+                        
                     }
                     Err(e) => {
-                        self.toasts.info(format!("Can't load notes: {e}"));
+                        self.toasts.error(format!("Can't load notes: {e}"));
                     }
                 }
             }
@@ -393,12 +428,7 @@ impl eframe::App for MeteoraApp {
     }
 }
 
-fn edit_note(
-    ui: &mut Ui,
-    note_id: &u128,
-    tags: &mut Vec<String>,
-    notes: &mut Notes,
-) {
+fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut Notes) {
     // make sure id is valid
     if notes.get(note_id).is_none() {
         ui.label("No such ID");
@@ -539,12 +569,7 @@ fn edit_note(
     // });
 }
 
-fn draw_note(
-    ui: &mut Ui,
-    note_id: &u128,
-    notes: &Notes,
-    active_note: &mut Option<u128>,
-) {
+fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Option<u128>) {
     // make sure id is valid
     if notes.get(note_id).is_none() {
         ui.label("No such ID");
@@ -636,12 +661,7 @@ fn draw_note(
     }
 }
 
-fn draw_list_note(
-    ui: &mut Ui,
-    note_id: &u128,
-    notes: &Notes,
-    active_note: &mut Option<u128>,
-) {
+fn draw_list_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Option<u128>) {
     // make sure id is valid
     if notes.get(note_id).is_none() {
         ui.label("No such ID");
