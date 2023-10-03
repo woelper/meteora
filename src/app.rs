@@ -752,7 +752,7 @@ fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
                                 {
                                     continue;
                                 }
-                                draw_note(ui, id, &mut state.notes, &mut state.active_note);
+                                draw_note(ui, id, &state.notes, &mut state.active_note);
                                 // Safety: if note has an unknown tag, add it.
                                 for tag in &note.tags {
                                     if !state.tags.contains(tag) {
@@ -788,7 +788,7 @@ fn listview(ui: &mut Ui, state: &mut MeteoraApp) {
                         continue;
                     }
 
-                    draw_list_note(ui, id, &mut state.notes, &mut state.active_note);
+                    draw_list_note(ui, id, &state.notes, &mut state.active_note);
 
                     // Safety: if note has an unknown tag, add it.
                     for tag in &note.tags {
