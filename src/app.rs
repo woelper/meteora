@@ -1,4 +1,8 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::PathBuf,
+    sync::mpsc::{Receiver, Sender, channel},
+};
 
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note, StorageMode};
 use egui::{
@@ -18,12 +22,14 @@ pub enum ViewMode {
     Graph,
 }
 
+pub type Notes = BTreeMap<u128, Note>;
+
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct MeteoraApp {
     /// All notes
-    notes: BTreeMap<u128, Note>,
+    notes: Notes,
     tags: Vec<String>,
     active_tags: HashSet<String>,
     active_note: Option<u128>,
@@ -37,6 +43,25 @@ pub struct MeteoraApp {
     storage_mode: StorageMode,
     #[serde(skip)]
     toasts: Toasts,
+    #[serde(skip)]
+    note_channel: (Sender<Notes>, Receiver<Notes>),
+}
+
+impl Default for MeteoraApp {
+    fn default() -> Self {
+        Self {
+            notes: Default::default(),
+            tags: Default::default(),
+            active_tags: Default::default(),
+            active_note: Default::default(),
+            credentials: Default::default(),
+            filter: Default::default(),
+            viewmode: Default::default(),
+            storage_mode: Default::default(),
+            toasts: Default::default(),
+            note_channel: channel(),
+        }
+    }
 }
 
 impl MeteoraApp {
@@ -210,12 +235,6 @@ impl eframe::App for MeteoraApp {
                                         if note.tags.contains(&old_tag) {
                                             note.tags.remove(&old_tag);
                                             note.tags.insert(tag.clone());
-
-                                            // if let Some(i) =
-                                            //     note.tags.iter().position(|x| x == &old_tag)
-                                            // {
-                                            //     note.tags[i] = tag.clone();
-                                            // }
                                         }
                                     }
                                 }
@@ -378,7 +397,7 @@ fn edit_note(
     ui: &mut Ui,
     note_id: &u128,
     tags: &mut Vec<String>,
-    notes: &mut BTreeMap<u128, Note>,
+    notes: &mut Notes,
 ) {
     // make sure id is valid
     if notes.get(note_id).is_none() {
@@ -523,7 +542,7 @@ fn edit_note(
 fn draw_note(
     ui: &mut Ui,
     note_id: &u128,
-    notes: &BTreeMap<u128, Note>,
+    notes: &Notes,
     active_note: &mut Option<u128>,
 ) {
     // make sure id is valid
@@ -620,7 +639,7 @@ fn draw_note(
 fn draw_list_note(
     ui: &mut Ui,
     note_id: &u128,
-    notes: &BTreeMap<u128, Note>,
+    notes: &Notes,
     active_note: &mut Option<u128>,
 ) {
     // make sure id is valid
