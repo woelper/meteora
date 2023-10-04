@@ -33,6 +33,7 @@ jobs:
         env:
           KEY: ${{ secrets.SuperSecret }}
         run: |
+          echo `pwd`
           echo "$KEY" > key.jsonbin.master
       - name: Build # build
         # "${GITHUB_REPOSITORY#*/}" evaluates into the name of the repository
