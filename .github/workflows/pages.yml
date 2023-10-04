@@ -31,7 +31,7 @@ jobs:
         run: wget -qO- https://github.com/thedodd/trunk/releases/latest/download/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xzf-
       - shell: bash
         env:
-          KEY: ${{ secrets.SuperSecret }}
+          KEY: ${{ secrets.JSONBIN_MASTERKEY }}
         run: |
           echo key: $KEY
           echo $KEY > key.jsonbin.master
