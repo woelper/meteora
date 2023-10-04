@@ -25,7 +25,7 @@ pub enum ViewMode {
 pub type Notes = BTreeMap<u128, Note>;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct MeteoraApp {
     /// All notes
@@ -44,26 +44,40 @@ pub struct MeteoraApp {
     #[serde(skip)]
     toasts: Toasts,
     #[serde(skip)]
-    note_channel: (Sender<Notes>, Receiver<Notes>),
-    #[serde(skip)]
-    id_channel: (Sender<String>, Receiver<String>),
+    channels: Channels,
 }
 
-impl Default for MeteoraApp {
+pub struct Channels {
+    pub note_channel: (Sender<Notes>, Receiver<Notes>),
+    pub id_channel: (Sender<String>, Receiver<String>),
+    pub msg_channel: (Sender<Message>, Receiver<Message>),
+}
+
+impl Default for Channels {
     fn default() -> Self {
         Self {
-            notes: Default::default(),
-            tags: Default::default(),
-            active_tags: Default::default(),
-            active_note: Default::default(),
-            credentials: Default::default(),
-            filter: Default::default(),
-            viewmode: Default::default(),
-            storage_mode: Default::default(),
-            toasts: Default::default(),
             note_channel: channel(),
             id_channel: channel(),
+            msg_channel: channel(),
         }
+    }
+}
+
+pub enum Message {
+    Info(String),
+    Warn(String),
+    Err(String),
+}
+
+impl Message {
+    pub fn info(msg: &str) -> Self {
+        Self::Info(msg.into())
+    }
+    pub fn warn(msg: &str) -> Self {
+        Self::Warn(msg.into())
+    }
+    pub fn err(msg: &str) -> Self {
+        Self::Err(msg.into())
     }
 }
 
@@ -132,19 +146,17 @@ impl eframe::App for MeteoraApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
         {
-            if let Err(e) = self.storage_mode.save_notes(
-                &self.notes,
-                &self.credentials,
-                self.note_channel.0.clone(),
-                self.id_channel.0.clone(),
-            ) {
+            if let Err(e) =
+                self.storage_mode
+                    .save_notes(&self.notes, &self.credentials, &self.channels)
+            {
                 eprintln!("{e}")
             }
         }
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if let Ok(id) = self.id_channel.1.try_recv() {
+        if let Ok(id) = self.channels.id_channel.1.try_recv() {
             self.credentials.0 = id.clone();
             match &mut self.storage_mode {
                 StorageMode::Local { .. } => {}
@@ -155,7 +167,7 @@ impl eframe::App for MeteoraApp {
             }
         }
 
-        if let Ok(notes) = self.note_channel.1.try_recv() {
+        if let Ok(notes) = self.channels.note_channel.1.try_recv() {
             self.notes = notes;
         }
 
@@ -172,8 +184,7 @@ impl eframe::App for MeteoraApp {
                         if let Err(e) = self.storage_mode.save_notes(
                             &self.notes,
                             &self.credentials,
-                            self.note_channel.0.clone(),
-                            self.id_channel.0.clone(),
+                            &self.channels,
                         ) {
                             self.toasts.error(format!("Error saving notes! {e}"));
                         } else {
@@ -185,7 +196,7 @@ impl eframe::App for MeteoraApp {
                     if ui.button("Restore").clicked() {
                         match self
                             .storage_mode
-                            .load_notes(&self.credentials, self.note_channel.0.clone())
+                            .load_notes(&self.credentials, &self.channels)
                         {
                             Ok(_) => {
                                 self.toasts.info("Loaded notes!");
@@ -330,14 +341,17 @@ impl eframe::App for MeteoraApp {
 
                                 if ui.button("Restore from username").clicked() {
                                     *bin_id = Some(self.credentials.0.clone());
+
+                                    _ = self
+                                        .storage_mode
+                                        .load_notes(&self.credentials, &self.channels);
                                 }
 
-                                if ui.button("Publish now").clicked() {
+                                if ui.button("Publish as new").clicked() {
                                     if let Err(e) = self.storage_mode.save_notes(
                                         &self.notes,
                                         &self.credentials,
-                                        self.note_channel.0.clone(),
-                                        self.id_channel.0.clone(),
+                                        &self.channels,
                                     ) {
                                         self.toasts.error(format!("Error publishing notes! {e}"));
                                     }
@@ -365,7 +379,7 @@ impl eframe::App for MeteoraApp {
             if self.notes.is_empty() && ui.button("load notes").clicked() {
                 match self
                     .storage_mode
-                    .load_notes(&self.credentials, self.note_channel.0.clone())
+                    .load_notes(&self.credentials, &self.channels)
                 {
                     Ok(_) => {
                         self.toasts.info("Loaded notes");

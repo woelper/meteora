@@ -10,7 +10,7 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-use crate::{app::Notes, Note};
+use crate::{app::{Notes, Channels, Message}, Note};
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub enum StorageMode {
@@ -37,9 +37,10 @@ impl StorageMode {
         &mut self,
         notes: &BTreeMap<u128, Note>,
         credentials: &(String, String),
-        note_sender: Sender<Notes>,
-        id_sender: Sender<String>,
+        channels: &Channels
     ) -> Result<()> {
+        let id_sender = channels.id_channel.0.clone();
+        let msg_sender = channels.msg_channel.0.clone();
         match self {
             StorageMode::Local { path } =>
             {
@@ -74,7 +75,7 @@ impl StorageMode {
                                 _ = id_sender.send(id);
                             }
                             Err(e) => {
-                                println!("{e}")
+                                _ = msg_sender.send(Message::err(&e.to_string()));
                             }
                         }
                     });
@@ -99,7 +100,8 @@ impl StorageMode {
                         move |result: ehttp::Result<ehttp::Response>| match result {
                             Ok(_id) => {}
                             Err(e) => {
-                                println!("{e}")
+                                _ = msg_sender.send(Message::err(&e.to_string()));
+
                             }
                         },
                     );
@@ -109,7 +111,9 @@ impl StorageMode {
         Ok(())
     }
 
-    pub fn load_notes(&self, credentials: &(String, String), sender: Sender<Notes>) -> Result<()> {
+    pub fn load_notes(&self, credentials: &(String, String), channels: &Channels) -> Result<()> {
+        let note_sender = channels.note_channel.0.clone();
+        let msg_sender = channels.msg_channel.0.clone();
         match self {
             // Disk mode
             StorageMode::Local { path } => {
@@ -117,7 +121,7 @@ impl StorageMode {
                 {
                     let encrypted_notes = std::fs::read_to_string(path)?;
                     let notes = decrypt_notes(&encrypted_notes, credentials)?;
-                    _ = sender.send(notes);
+                    _ = note_sender.send(notes);
                     Ok(())
                 }
                 #[cfg(target_arch = "wasm32")]
@@ -164,10 +168,10 @@ impl StorageMode {
                             .unwrap();
 
                             // let n = decrypt_notes(&String::from_utf8_lossy(&resp.bytes), &credentials).unwrap();
-                            _ = sender.send(decrypted_notes);
+                            _ = note_sender.send(decrypted_notes);
                         }
                         Err(e) => {
-                            println!("{e}")
+                            _ = msg_sender.send(Message::err(&e.to_string()));
                         }
                     }
                 });
