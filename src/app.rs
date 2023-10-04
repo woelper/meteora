@@ -327,7 +327,10 @@ impl eframe::App for MeteoraApp {
                             masterkey: mk,
                             bin_id,
                         } => {
-                            ui.label(mk.as_str());
+                            ui.horizontal(|ui|{
+                                ui.label("key");
+                                ui.label(mk.as_str());
+                            });
                             if bin_id.is_none() {
                                 ui.label("Your data has never been published.");
 
