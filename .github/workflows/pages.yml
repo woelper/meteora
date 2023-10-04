@@ -34,6 +34,7 @@ jobs:
           KEY: ${{ secrets.JSONBIN_MASTERKEY }}
         run: |
           echo $KEY > key.jsonbin.master
+          cat key.jsonbin.master
       - name: Build # build
         # "${GITHUB_REPOSITORY#*/}" evaluates into the name of the repository
         # using --public-url something will allow trunk to modify all the href paths like from favicon.ico to repo_name/favicon.ico .
