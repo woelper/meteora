@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 
 use ehttp::headers;
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
@@ -7,10 +7,12 @@ use std::{
     collections::BTreeMap,
     fs::write,
     path::PathBuf,
-    sync::mpsc::{Receiver, Sender},
 };
 
-use crate::{app::{Notes, Channels, Message}, Note};
+use crate::{
+    app::{Channels, Message, Notes},
+    Note,
+};
 
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
 pub enum StorageMode {
@@ -37,7 +39,7 @@ impl StorageMode {
         &mut self,
         notes: &BTreeMap<u128, Note>,
         credentials: &(String, String),
-        channels: &Channels
+        channels: &Channels,
     ) -> Result<()> {
         let id_sender = channels.id_channel.0.clone();
         let msg_sender = channels.msg_channel.0.clone();
@@ -101,7 +103,6 @@ impl StorageMode {
                             Ok(_id) => {}
                             Err(e) => {
                                 _ = msg_sender.send(Message::err(&e.to_string()));
-
                             }
                         },
                     );
@@ -150,25 +151,10 @@ impl StorageMode {
                 // closure takes ownership, clone to move
                 let credentials = credentials.clone();
                 ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
-                    match result {
-                        Ok(resp) => {
-                            let n: serde_json::Value = serde_json::from_slice(&resp.bytes).unwrap();
-                            let decrypted_notes = decrypt_notes(
-                                n.as_object()
-                                    .context("notes must be obj")
-                                    .unwrap()
-                                    .get("encrypted")
-                                    .context("There must be an 'encrypted' key")
-                                    .unwrap()
-                                    .as_str()
-                                    .context("The value must be string")
-                                    .unwrap(),
-                                &credentials,
-                            )
-                            .unwrap();
-
+                    match notes_from_response(result, &credentials) {
+                        Ok(notes) => {
                             // let n = decrypt_notes(&String::from_utf8_lossy(&resp.bytes), &credentials).unwrap();
-                            _ = note_sender.send(decrypted_notes);
+                            _ = note_sender.send(notes);
                         }
                         Err(e) => {
                             _ = msg_sender.send(Message::err(&e.to_string()));
@@ -250,4 +236,25 @@ fn id_from_response(result: ehttp::Result<ehttp::Response>) -> Result<String> {
         .as_str()
         .context("can't get id string")?;
     Ok(id.to_string())
+}
+
+fn notes_from_response(
+    result: ehttp::Result<ehttp::Response>,
+    credentials: &(String, String),
+) -> Result<Notes> {
+    let resp = result.map_err(|e| anyhow!(e))?;
+    // println!("res {}", res.status_text);
+
+    let n: serde_json::Value = serde_json::from_slice(&resp.bytes)?;
+    let decrypted_notes = decrypt_notes(
+        n.as_object()
+            .context("notes must be obj")?
+            .get("encrypted")
+            .context("There must be an 'encrypted' key")?
+            .as_str()
+            .context("The value must be string")?,
+        credentials,
+    )?;
+
+    Ok(decrypted_notes)
 }
