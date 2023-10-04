@@ -144,19 +144,15 @@ impl eframe::App for MeteoraApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-
-
         if let Ok(id) = self.id_channel.1.try_recv() {
             match &mut self.storage_mode {
                 StorageMode::Local { .. } => {
                     self.credentials.0 = id;
-                },
+                }
                 StorageMode::JsonBin { bin_id, .. } => {
-
                     *bin_id = Some(id);
                     self.toasts.info("Registered JsonBin.".to_string());
-
-                },
+                }
             }
         }
 
@@ -188,7 +184,10 @@ impl eframe::App for MeteoraApp {
                     }
 
                     if ui.button("Restore").clicked() {
-                        match self.storage_mode.load_notes(&self.credentials, self.note_channel.0.clone()) {
+                        match self
+                            .storage_mode
+                            .load_notes(&self.credentials, self.note_channel.0.clone())
+                        {
                             Ok(_) => {
                                 self.toasts.info("Loaded notes!");
                             }
@@ -327,7 +326,7 @@ impl eframe::App for MeteoraApp {
                             masterkey: mk,
                             bin_id,
                         } => {
-                            ui.horizontal(|ui|{
+                            ui.horizontal(|ui| {
                                 ui.label("key");
                                 ui.label(mk.as_str());
                             });
@@ -356,12 +355,16 @@ impl eframe::App for MeteoraApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Offer restore fuctionality
-            if self.notes.is_empty() {
-                match self.storage_mode.load_notes(&self.credentials, self.note_channel.0.clone()) {
-                    Ok(notes) => {
+            // Offer restore fuctionality if local
+
+            #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
+            if self.notes.is_empty() && ui.button("load notes").clicked() {
+                match self
+                    .storage_mode
+                    .load_notes(&self.credentials, self.note_channel.0.clone())
+                {
+                    Ok(_) => {
                         self.toasts.info("Loaded notes");
-                        
                     }
                     Err(e) => {
                         self.toasts.error(format!("Can't load notes: {e}"));
