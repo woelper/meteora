@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Result, bail};
 
 use ehttp::headers;
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
