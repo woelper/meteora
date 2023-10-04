@@ -145,9 +145,9 @@ impl eframe::App for MeteoraApp {
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if let Ok(id) = self.id_channel.1.try_recv() {
+            self.credentials.0 = id.clone();
             match &mut self.storage_mode {
                 StorageMode::Local { .. } => {
-                    self.credentials.0 = id;
                 }
                 StorageMode::JsonBin { bin_id, .. } => {
                     *bin_id = Some(id);
@@ -323,13 +323,9 @@ impl eframe::App for MeteoraApp {
                             }
                         }
                         StorageMode::JsonBin {
-                            masterkey: mk,
+                            masterkey: _,
                             bin_id,
                         } => {
-                            ui.horizontal(|ui| {
-                                ui.label("key");
-                                ui.label(mk.as_str());
-                            });
                             if bin_id.is_none() {
                                 ui.label("Your data has never been published.");
 
