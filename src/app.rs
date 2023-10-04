@@ -287,7 +287,7 @@ impl eframe::App for MeteoraApp {
                             .hint_text("Encryption Key"),
                     );
 
-                    egui::ComboBox::from_label("View mode")
+                    egui::ComboBox::from_label("View")
                         .selected_text(format!("{:?}", self.viewmode))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut self.viewmode, ViewMode::Board, "Board");
@@ -295,7 +295,7 @@ impl eframe::App for MeteoraApp {
                             ui.selectable_value(&mut self.viewmode, ViewMode::Graph, "Graph");
                         });
 
-                    egui::ComboBox::from_label("Storage mode")
+                    egui::ComboBox::from_label("Storage")
                         .selected_text(format!("{:?}", self.storage_mode))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(
@@ -305,6 +305,7 @@ impl eframe::App for MeteoraApp {
                                 },
                                 "Local",
                             );
+                            // let k = env!("KEY", "");
                             ui.selectable_value(
                                 &mut self.storage_mode,
                                 StorageMode::JsonBin {
@@ -323,9 +324,10 @@ impl eframe::App for MeteoraApp {
                             }
                         }
                         StorageMode::JsonBin {
-                            masterkey: _,
+                            masterkey: mk,
                             bin_id,
                         } => {
+                            ui.label(mk.as_str());
                             if bin_id.is_none() {
                                 ui.label("Your data has never been published.");
 
