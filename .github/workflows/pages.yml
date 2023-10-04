@@ -33,7 +33,7 @@ jobs:
         env:
           KEY: ${{ secrets.JSONBIN_MASTERKEY }}
         run: |
-          echo "$KEY" > key.jsonbin.master
+          echo '$KEY' > key.jsonbin.master
       # - name: Create key file
       #   run: echo "${{ secrets.JSONBIN_MASTERKEY }}" > key.jsonbin.master
       - name: Build # build
