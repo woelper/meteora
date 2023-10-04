@@ -117,7 +117,7 @@ impl StorageMode {
                 {
                     let encrypted_notes = std::fs::read_to_string(path)?;
                     let notes = decrypt_notes(&encrypted_notes, credentials)?;
-                    sender.send(notes);
+                    _ = sender.send(notes);
                     Ok(())
                 }
                 #[cfg(target_arch = "wasm32")]
