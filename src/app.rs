@@ -147,8 +147,7 @@ impl eframe::App for MeteoraApp {
         if let Ok(id) = self.id_channel.1.try_recv() {
             self.credentials.0 = id.clone();
             match &mut self.storage_mode {
-                StorageMode::Local { .. } => {
-                }
+                StorageMode::Local { .. } => {}
                 StorageMode::JsonBin { bin_id, .. } => {
                     *bin_id = Some(id);
                     self.toasts.info("Registered JsonBin.".to_string());
@@ -329,6 +328,10 @@ impl eframe::App for MeteoraApp {
                             if bin_id.is_none() {
                                 ui.label("Your data has never been published.");
 
+                                if ui.button("Restore from username").clicked() {
+                                    *bin_id = Some(self.credentials.0.clone());
+                                }
+
                                 if ui.button("Publish now").clicked() {
                                     if let Err(e) = self.storage_mode.save_notes(
                                         &self.notes,
@@ -341,6 +344,11 @@ impl eframe::App for MeteoraApp {
                                 }
                             } else {
                                 ui.label(format!("Bin ID: {}", bin_id.clone().unwrap_or_default()));
+                                if ui.button("Copy to clipboard").clicked() {
+                                    ui.output_mut(|o| {
+                                        o.copied_text = bin_id.clone().unwrap_or_default()
+                                    });
+                                }
                             }
                         }
                     }

@@ -151,11 +151,14 @@ impl StorageMode {
                             let n: serde_json::Value = serde_json::from_slice(&resp.bytes).unwrap();
                             let decrypted_notes = decrypt_notes(
                                 n.as_object()
-                                    .context("notes must be obj").unwrap()
+                                    .context("notes must be obj")
+                                    .unwrap()
                                     .get("encrypted")
-                                    .context("There must be an 'encrypted' key").unwrap()
+                                    .context("There must be an 'encrypted' key")
+                                    .unwrap()
                                     .as_str()
-                                    .context("The value must be string").unwrap(),
+                                    .context("The value must be string")
+                                    .unwrap(),
                                 &credentials,
                             )
                             .unwrap();
