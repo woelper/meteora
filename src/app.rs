@@ -22,6 +22,8 @@ pub enum ViewMode {
     Graph,
 }
 
+pub const GAMMA_MULT: f32 = 0.5;
+
 pub type Notes = BTreeMap<u128, Note>;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -105,7 +107,7 @@ impl MeteoraApp {
             ),
             (
                 egui::TextStyle::Body,
-                FontId::new(14.0, FontFamily::Proportional),
+                FontId::new(15.0, FontFamily::Proportional),
             ),
             (
                 egui::TextStyle::Monospace,
@@ -236,7 +238,7 @@ impl eframe::App for MeteoraApp {
                     let contained = self.active_tags.contains(tag);
 
                     ui.style_mut().visuals.selection.bg_fill =
-                        color_from_tag(tag).gamma_multiply(0.5);
+                        color_from_tag(tag).gamma_multiply(GAMMA_MULT);
                     // ui.label(format!("{:?}",color_from_tag(tag)));
                     if ui.add(SelectableLabel::new(contained, tag)).clicked() {
                         // if ui.selectable_label(contained, tag).clicked() {
@@ -520,7 +522,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
             ui.label("Tags:");
             for tag in tags.iter() {
                 let contains = note.tags.contains(tag);
-                ui.style_mut().visuals.selection.bg_fill = color_from_tag(tag).gamma_multiply(0.5);
+                ui.style_mut().visuals.selection.bg_fill = color_from_tag(tag).gamma_multiply(GAMMA_MULT);
                 if ui.selectable_label(contains, tag.to_string()).clicked() {
                     if contains {
                         note.tags.remove(tag);
@@ -634,7 +636,7 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
         let tag_shape = Shape::Rect(RectShape::new(
             r,
             10.0,
-            color_from_tag(tag).gamma_multiply(0.5),
+            color_from_tag(tag).gamma_multiply(GAMMA_MULT),
             Stroke::NONE,
         ));
         shapes_to_draw.push(tag_shape)
@@ -656,14 +658,15 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
     );
 
     // if note.contains_markdown() {
-    //     let mut cache = CommonMarkCache::default();
+    //     let mut fcache = CommonMarkCache::default();
     //     CommonMarkViewer::new("viewer").show(&mut sub_ui, &mut cache, &note.get_clean_text());
     // } else {
     //     sub_ui.label(note.get_clean_text());
     // }
 
     sub_ui.label(
-        RichText::new(&note.get_clean_text()).color(readable_text(&Color32::from_rgb(
+        RichText::new(&note.get_clean_text())
+        .color(readable_text(&Color32::from_rgb(
             note.color[0],
             note.color[1],
             note.color[2],
@@ -702,11 +705,12 @@ fn draw_list_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut 
         // ui.allocate_space(ui.available_size());
         ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
         ui.label(
-            RichText::new(note.get_title()).color(readable_text(&Color32::from_rgb(
+            RichText::new(note.get_title())
+            .color(readable_text(&Color32::from_rgb(
                 note.color[0],
                 note.color[1],
                 note.color[2],
-            ))), // .size(12.)
+            ))),
         );
     });
 

@@ -3,6 +3,8 @@ use rand::prelude::*;
 use rand_chacha::ChaCha20Rng;
 use std::collections::BTreeSet;
 
+use crate::app::GAMMA_MULT;
+
 #[derive(serde::Deserialize, serde::Serialize, PartialEq, Clone, Default, Debug)]
 pub enum Deadline {
     #[default]
@@ -58,7 +60,7 @@ impl Note {
     }
     pub fn get_color(&self) -> Color32 {
         if self.tags.is_empty() {
-            Color32::from_rgb(self.color[0], self.color[1], self.color[2]).gamma_multiply(0.5)
+            Color32::from_rgb(self.color[0], self.color[1], self.color[2]).gamma_multiply(GAMMA_MULT)
         } else {
             let s = self
                 .tags
@@ -66,7 +68,7 @@ impl Note {
                 .into_iter()
                 .collect::<Vec<String>>()
                 .join("");
-            color_from_tag(&s).gamma_multiply(0.5)
+            color_from_tag(&s).gamma_multiply(GAMMA_MULT)
         }
     }
     pub fn get_links(&self) -> Vec<&str> {
