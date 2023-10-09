@@ -860,29 +860,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "eframe_template"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "eframe",
- "egui",
- "egui-notify",
- "egui_commonmark",
- "egui_extras",
- "ehttp",
- "env_logger",
- "getrandom",
- "log",
- "magic-crypt",
- "rand",
- "rand_chacha",
- "serde",
- "serde_json",
- "wasm-bindgen-futures",
-]
-
-[[package]]
 name = "egui"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1635,6 +1612,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "meteora"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "eframe",
+ "egui",
+ "egui-notify",
+ "egui_commonmark",
+ "egui_extras",
+ "ehttp",
+ "env_logger",
+ "getrandom",
+ "log",
+ "magic-crypt",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
