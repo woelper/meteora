@@ -902,17 +902,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui_commonmark"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ffd5501495ea79117103bcb0ed0480eacf96967837662516ecd629580596262"
-dependencies = [
- "egui",
- "egui_extras",
- "pulldown-cmark",
-]
-
-[[package]]
 name = "egui_extras"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -920,9 +909,7 @@ checksum = "68ffe3fe5c00295f91c2a61a74ee271c32f74049c94ba0b1cea8f26eb478bc07"
 dependencies = [
  "chrono",
  "egui",
- "ehttp",
  "enum-map",
- "image",
  "log",
  "mime_guess",
  "serde",
@@ -1623,7 +1610,6 @@ dependencies = [
  "eframe",
  "egui",
  "egui-notify",
- "egui_commonmark",
  "egui_extras",
  "ehttp",
  "env_logger",
@@ -2021,17 +2007,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d433d9f1a3e8c1263d9456598b16fec66f4acc9a74dacffd35c7bb09b3a1328"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "pulldown-cmark"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77a1a2f1f0a7ecff9c31abbe177637be0e97a0aef46cf8738ece09327985d998"
-dependencies = [
- "bitflags",
- "memchr",
- "unicase",
 ]
 
 [[package]]
