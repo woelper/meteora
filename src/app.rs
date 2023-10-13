@@ -467,8 +467,12 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
     let note = notes.get_mut(note_id).unwrap();
 
     // ui.text_edit_multiline(&mut note.text);
-    ui.add(egui::TextEdit::multiline(&mut note.text).desired_rows(15));
-    // ui.add_sized(ui.available_size()/2., egui::TextEdit::multiline(&mut note.text));
+    ui.add(
+        egui::TextEdit::multiline(&mut note.text)
+            .frame(false)
+            .margin(vec2(20., 20.))
+            .desired_rows(15),
+    );
 
     ui.horizontal(|ui| {
         ui.label("Base Priority");
@@ -522,7 +526,8 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
             ui.label("Tags:");
             for tag in tags.iter() {
                 let contains = note.tags.contains(tag);
-                ui.style_mut().visuals.selection.bg_fill = color_from_tag(tag).gamma_multiply(GAMMA_MULT);
+                ui.style_mut().visuals.selection.bg_fill =
+                    color_from_tag(tag).gamma_multiply(GAMMA_MULT);
                 if ui.selectable_label(contains, tag.to_string()).clicked() {
                     if contains {
                         note.tags.remove(tag);
@@ -555,23 +560,10 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
     ui.horizontal(|ui| {
         let note = notes.get_mut(note_id).unwrap();
 
-        egui::ComboBox::from_id_source(note.id)
-            .selected_text("Select tag".to_string())
-            .show_ui(ui, |ui| {
-                for tag in tags.iter() {
-                    let contains = note.tags.contains(tag);
-                    if ui.selectable_label(contains, tag.to_string()).clicked() {
-                        if contains {
-                            note.tags.remove(tag);
-                        } else {
-                            note.tags.insert(tag.clone());
-                        }
-                    }
-                }
-            });
+        ui.checkbox(&mut note.complete, "Finished");
 
         egui::ComboBox::from_id_source(format!("{}x", note.id))
-            .selected_text("Depends on...".to_string())
+            .selected_text("☞ depends on...".to_string())
             .show_ui(ui, |ui| {
                 for (i, n) in immutable_notes.iter() {
                     let contains = note.depends.contains(i);
@@ -585,7 +577,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
                 }
             });
 
-        if ui.button("🗑").clicked() {
+        if ui.button("🗑 delete").clicked() {
             notes.remove(note_id);
         }
     });
@@ -665,8 +657,7 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
     // }
 
     sub_ui.label(
-        RichText::new(&note.get_clean_text())
-        .color(readable_text(&Color32::from_rgb(
+        RichText::new(&note.get_clean_text()).color(readable_text(&Color32::from_rgb(
             note.color[0],
             note.color[1],
             note.color[2],
@@ -705,8 +696,7 @@ fn draw_list_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut 
         // ui.allocate_space(ui.available_size());
         ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
         ui.label(
-            RichText::new(note.get_title())
-            .color(readable_text(&Color32::from_rgb(
+            RichText::new(note.get_title()).color(readable_text(&Color32::from_rgb(
                 note.color[0],
                 note.color[1],
                 note.color[2],
@@ -794,6 +784,10 @@ fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
                             if state.active_tags.is_empty()
                                 || note.tags.iter().any(|t| state.active_tags.contains(t))
                             {
+                                if note.complete {
+                                    continue;
+                                }
+
                                 if !state.filter.is_empty()
                                     && !note
                                         .text
