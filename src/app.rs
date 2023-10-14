@@ -435,10 +435,10 @@ impl eframe::App for MeteoraApp {
                 self.active_note = None;
             }
 
-            egui::Window::new("x")
+            egui::Window::new("xxxxx")
                 .collapsible(false)
                 .title_bar(false)
-                .fixed_rect(ctx.available_rect().shrink(0.).translate(vec2(-60.0, 20.)))
+                .fixed_rect(ctx.screen_rect().shrink(80.).translate(vec2(-10.0, 00.)))
                 .show(ctx, |ui| {
                     ui.vertical_centered_justified(|ui| {
                         edit_note(ui, &id, &mut self.tags, &mut self.notes);
