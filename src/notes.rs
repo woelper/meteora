@@ -46,7 +46,7 @@ impl Note {
     }
 
     pub fn get_title(&self) -> &str {
-        self.text.split('\n').next().unwrap_or("Default")
+        self.text.lines().next().unwrap_or("Default")
     }
     pub fn get_clean_text(&self) -> String {
         let mut t = self
