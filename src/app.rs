@@ -690,27 +690,16 @@ fn draw_list_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut 
 
     let note = notes.get(note_id).unwrap();
 
-
-
-    let inner = egui::Frame {
+    let frame = egui::Frame {
         fill: note.get_color(),
         inner_margin: 5.0.into(),
-        ..Default::default()}.show(ui,|ui| {
-        // ui.label("sdsdsd")
-    // });
-
-
-
-
-
-      
-
+        ..Default::default()
+    };
+    let inner = frame.show(ui, |ui| {
         ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
-
-        ui.horizontal(|ui|{
-            ui.label(RichText::new(note.get_title()));
-            ui.label(RichText::new(note.get_excerpt()).size(10.));
-
+        ui.horizontal(|ui| {
+            ui.label(note.get_title());
+            ui.add(egui::Label::new(RichText::new(note.get_excerpt()).size(10.)).truncate(true));
         });
         for d in &note.depends {
             if let Some(dependent) = notes.get(d) {
@@ -719,9 +708,13 @@ fn draw_list_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut 
                 });
             }
         }
-        
-            // let r = ui.clip_rect();
-            // ui.painter().rect_filled(r.shrink(2.), 0.0, Color32::RED);
+        if ui.ui_contains_pointer() {
+            ui.painter().rect_filled(
+                ui.min_rect().expand(5.),
+                0.0,
+                Color32::from_rgb_additive(11, 11, 11),
+            );
+        }
     });
 
     let resp = inner.response.interact(Sense::click());
@@ -813,8 +806,6 @@ fn listview(ui: &mut Ui, state: &mut MeteoraApp) {
                     {
                         continue;
                     }
-
-                    
 
                     draw_list_note(ui, id, &state.notes, &mut state.active_note);
 
