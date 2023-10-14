@@ -17,19 +17,19 @@ https://woelper.github.io/meteora/
 ### TODO
 
 - [ ] show checkboxes in notes
-- [ ] better "add new tag" in note editor
 - [ ] Visual cue for urgency (pulsate etc)
 - [ ] Add deadline, calendar, deadline type
-- [ ] Draw dependencies
 - [ ] Graph view
-- [ ] Build with API secret
 - [ ] show progress based on checkboxes
 - [ ] Markup toggle or detection / bug: commonmark renders strangely.
 - [ ] Custom basic markup
-- [ ] Toasts
 - [ ] Get rid of username
 - [ ] Note color needs to come from theme
 - [ ] Deleting tag should reset active tag so notes are not empty
+- [X] better "add new tag" in note editor
+- [X] Draw dependencies
+- [X] Build with API secret
+- [X] Toasts
 - [X] Simplify local encryption (remove check if credetials are used)
 - [X] Try tag cloud in collapsible header instead of tag dropdown
 - [X] Tag deletion
