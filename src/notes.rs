@@ -53,6 +53,10 @@ impl Note {
         self.text.lines().skip(0).collect::<Vec<_>>().join("\n")
     }
 
+    pub fn get_excerpt(&self) -> String {
+        self.get_clean_text().lines().skip(1).collect::<Vec<_>>().join(" ")
+    }
+
     pub fn get_clean_text(&self) -> String {
         let mut t = self
             .text
