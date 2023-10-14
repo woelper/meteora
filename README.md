@@ -26,6 +26,7 @@ https://woelper.github.io/meteora/
 - [ ] Get rid of username
 - [ ] Note color needs to come from theme
 - [ ] Deleting tag should reset active tag so notes are not empty
+- [ ] Generic edge connections
 - [X] better "add new tag" in note editor
 - [X] Draw dependencies
 - [X] Build with API secret
