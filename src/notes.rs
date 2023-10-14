@@ -48,6 +48,11 @@ impl Note {
     pub fn get_title(&self) -> &str {
         self.text.lines().next().unwrap_or("Default")
     }
+
+    pub fn get_body(&self) -> String {
+        self.text.lines().skip(0).collect::<Vec<_>>().join("\n")
+    }
+
     pub fn get_clean_text(&self) -> String {
         let mut t = self
             .text
@@ -60,7 +65,8 @@ impl Note {
     }
     pub fn get_color(&self) -> Color32 {
         if self.tags.is_empty() {
-            Color32::from_rgb(self.color[0], self.color[1], self.color[2]).gamma_multiply(GAMMA_MULT)
+            Color32::from_rgb(self.color[0], self.color[1], self.color[2])
+                .gamma_multiply(GAMMA_MULT)
         } else {
             let s = self
                 .tags
