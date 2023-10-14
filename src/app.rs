@@ -690,24 +690,42 @@ fn draw_list_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut 
 
     let note = notes.get(note_id).unwrap();
 
-    let inner = ui.group(|ui| {
-        ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
-        ui.label(
-            RichText::new(note.get_title()),
-        );
-        for d in &note.depends {
 
+
+    let inner = egui::Frame {
+        fill: note.get_color(),
+        inner_margin: 5.0.into(),
+        ..Default::default()}.show(ui,|ui| {
+        // ui.label("sdsdsd")
+    // });
+
+
+
+
+
+      
+
+        ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
+
+        ui.horizontal(|ui|{
+            ui.label(RichText::new(note.get_title()));
+            ui.label(RichText::new(note.get_excerpt()).size(10.));
+
+        });
+        for d in &note.depends {
             if let Some(dependent) = notes.get(d) {
                 ui.collapsing(dependent.get_title(), |ui| {
                     draw_list_note(ui, d, notes, active_note);
                 });
-
             }
         }
+        
+            // let r = ui.clip_rect();
+            // ui.painter().rect_filled(r.shrink(2.), 0.0, Color32::RED);
     });
 
     let resp = inner.response.interact(Sense::click());
-   
+
     if resp.clicked() {
         *active_note = Some(*note_id);
     }
@@ -795,6 +813,8 @@ fn listview(ui: &mut Ui, state: &mut MeteoraApp) {
                     {
                         continue;
                     }
+
+                    
 
                     draw_list_note(ui, id, &state.notes, &mut state.active_note);
 
