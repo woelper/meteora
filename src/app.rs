@@ -690,60 +690,24 @@ fn draw_list_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut 
 
     let note = notes.get(note_id).unwrap();
 
-    // let r = ui.allocate_at_least(desired_size, sense)
-
     let inner = ui.group(|ui| {
-        // ui.allocate_space(ui.available_size());
         ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
         ui.label(
-            RichText::new(note.get_title()).color(readable_text(&Color32::from_rgb(
-                note.color[0],
-                note.color[1],
-                note.color[2],
-            ))),
+            RichText::new(note.get_title()),
         );
+        for d in &note.depends {
+
+            if let Some(dependent) = notes.get(d) {
+                ui.collapsing(dependent.get_title(), |ui| {
+                    draw_list_note(ui, d, notes, active_note);
+                });
+
+            }
+        }
     });
 
     let resp = inner.response.interact(Sense::click());
-
-    // let mut shapes_to_draw = vec![];
-
-    // for (i, tag) in note.tags.iter().enumerate().skip(1) {
-    //     let offset = 20.;
-
-    //     let r = Rect::from_min_max(
-    //         rect.left_top(),
-    //         Pos2::new(rect.left_top().x + offset, rect.left_top().y + offset),
-    //     )
-    //     .translate(vec2(offset * i as f32, 0.0))
-    //     .translate(vec2(-offset + 2., note_size.y - offset - 2.));
-
-    //     let tag_shape = Shape::Rect(RectShape {
-    //         rect: r,
-    //         rounding: 10.0.into(),
-    //         fill: color_from_tag(tag).gamma_multiply(0.5),
-    //         stroke: Stroke::NONE,
-    //     });
-    //     shapes_to_draw.push(tag_shape)
-    // }
-
-    // let shp = {
-    //     let shadow = Shadow::small_light();
-    //     let shadow = shadow.tessellate(rect, 5.0);
-    //     let shadow = Shape::Mesh(shadow);
-    //     shapes_to_draw.push(shadow);
-    //     Shape::Vec(shapes_to_draw)
-    // };
-
-    // ui.painter().add(shp);
-
-    // sub_ui.label(&note.text);
-    // sub_ui.add_space(20.);
-
-    // ui.put(rect, egui::Label::new(note.get_title()));
-
-    // });
-    // let resp = r.response.interact(egui::Sense::click());
+   
     if resp.clicked() {
         *active_note = Some(*note_id);
     }
