@@ -12,6 +12,8 @@ Test it here:
 https://woelper.github.io/meteora/
 
 
+![screenshot](assets/screenshot_1.png)
+
 ---
 
 ### TODO
