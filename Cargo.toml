@@ -24,7 +24,10 @@ getrandom = { version = "0.2", features = ["js"] }
 chrono = { version = "0.4", features = ["wasmbind", "serde"] }
 rand = { version = "0.8" }
 rand_chacha = "0.3"
-# reqwest = { version = "0.11", features = ["blocking", "json"] }
+egui_graphs = { version = "0.13", features = ["egui_persistence"]}
+petgraph = "0.6"
+# fdg-sim = "*"
+# fdg-img = "*"
 
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }

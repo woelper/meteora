@@ -6,11 +6,13 @@ use std::{
 
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note, StorageMode};
 use egui::{
-    epaint::{ahash::HashSet, RectShape, Shadow},
+    epaint::{ahash::HashSet, RectShape, Shadow, TextShape},
     global_dark_light_mode_buttons, vec2, Color32, FontData, FontFamily, FontId, Id, Layout, Pos2,
     Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
 };
+use egui_graphs::{Graph, GraphView};
 use egui_notify::Toasts;
+use petgraph::{stable_graph::StableGraph, Directed};
 
 // use egui_commonmark::*;
 
@@ -47,6 +49,8 @@ pub struct MeteoraApp {
     toasts: Toasts,
     #[serde(skip)]
     channels: Channels,
+    #[serde(skip)]
+    graph: Option<Graph<String, (), Directed>>,
 }
 
 pub struct Channels {
@@ -400,7 +404,70 @@ impl eframe::App for MeteoraApp {
                     listview(ui, self);
                 }
                 ViewMode::Graph => {
-                    ui.label("Not yet!");
+                    ui.label("Work in progress!");
+
+                    // add graph if not present
+                    if self.graph.is_none() {
+                        let mut g: StableGraph<String, ()> = StableGraph::new();
+                        let mut added = vec![];
+                        for note in self.notes.values() {
+                            if !added.contains(&note.id) {
+                                let a = g.add_node(note.get_title().into());
+                                added.push(note.id);
+                                for c in &note.depends {
+                                    if let Some(depend) = self.notes.get(c) {
+                                        let b = g.add_node(depend.get_title().into());
+                                        g.add_edge(a, b, ());
+                                        added.push(*c);
+                                    }
+                                }
+                            }
+                        }
+                        self.graph = Some(Graph::from(&g));
+                    }
+
+                    if let Some(g) = self.graph.as_mut() {
+                        ui.add(&mut GraphView::new(g).with_custom_node_draw(
+                            |ctx, n, meta, _style, l| {
+                                // lets draw a rect with label in the center for every node
+
+                                // find node center location on the screen coordinates
+                                let node_center_loc = n.screen_location(meta).to_pos2();
+
+                                // find node radius accounting for current zoom level; we will use it as a reference for the rect and label sizes
+                                let rad = n.screen_radius(meta);
+
+                                // first create rect shape
+                                let size = Vec2::new(rad * 1.5, rad * 1.5);
+                                let rect = Rect::from_center_size(node_center_loc, size);
+                                let shape_rect = Shape::rect_stroke(
+                                    rect,
+                                    Rounding::default(),
+                                    Stroke::new(1., n.color(ctx)),
+                                );
+
+                                // then create shape for the label placing it in the center of the rect
+                                let color = ctx.style().visuals.text_color();
+                                let galley = ctx.fonts(|f| {
+                                    f.layout_no_wrap(
+                                        n.data().unwrap().clone(),
+                                        FontId::new(rad, FontFamily::Monospace),
+                                        color,
+                                    )
+                                });
+                                // we need to offset a bit to place the label in the center of the rect
+                                let label_loc = Pos2::new(
+                                    node_center_loc.x - rad / 2.,
+                                    node_center_loc.y - rad / 2.,
+                                );
+                                let shape_label = TextShape::new(label_loc, galley);
+
+                                // add shapes to the drawing layers; the drawing process is happening in the widget lifecycle.
+                                l.add(shape_rect);
+                                l.add(shape_label);
+                            },
+                        ));
+                    }
                 }
             }
 
