@@ -95,6 +95,7 @@ impl MeteoraApp {
             "inter".to_owned(),
             FontData::from_static(include_bytes!("fonts/Inter-Regular.ttf")),
         );
+        egui_extras::install_image_loaders(&cc.egui_ctx);
 
         fonts
             .families
@@ -128,18 +129,8 @@ impl MeteoraApp {
         ]
         .into();
 
-        // style.visuals.faint_bg_color = Color32::BLUE;
-        // style.visuals.widgets.noninteractive.bg_fill = Color32::BLUE;
-        // style.visuals.widgets.inactive.bg_fill = Color32::BLUE;
-
-        // style.visuals.panel_fill = Color32::from_gray(255);
-
         cc.egui_ctx.set_style(style);
 
-        // let mut style= cc.egui_ctx.style();
-        // style.text_styles.get_mut(&TextStyle::Body).unwrap().size = 100.;
-
-        // Note that you must enable the `persistence` feature for this to work.
         if let Some(storage) = cc.storage {
             return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
         }
@@ -174,6 +165,7 @@ impl eframe::App for MeteoraApp {
         }
 
         if let Ok(notes) = self.channels.note_channel.1.try_recv() {
+            self.toasts.info(format!("Loaded {} notes", notes.len()));
             self.notes = notes;
         }
 
@@ -220,7 +212,7 @@ impl eframe::App for MeteoraApp {
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("🔍");
-                ui.text_edit_singleline(&mut self.filter);
+                ui.add(egui::TextEdit::singleline(&mut self.filter).hint_text("Search notes..."));
             });
 
             ui.heading("Tags");
@@ -396,6 +388,13 @@ impl eframe::App for MeteoraApp {
                 }
             }
 
+            if self.notes.is_empty() {
+                let logo_size = 300.;
+                let top = Pos2::new(250., 50.);
+                egui::Image::new(egui::include_image!("../assets/maskable_icon_x512.png"))
+                    .paint_at(ui, Rect::from_min_max(top, top + Vec2::splat(logo_size)));
+            }
+
             match self.viewmode {
                 ViewMode::Board => {
                     boardview(ui, self);
@@ -534,7 +533,8 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
     let note = notes.get_mut(note_id).unwrap();
 
     // ui.text_edit_multiline(&mut note.text);
-    ui.add(
+    ui.add_sized(
+        [ui.available_width(), 10.],
         egui::TextEdit::multiline(&mut note.text)
             .frame(false)
             .margin(vec2(20., 20.))
@@ -666,7 +666,7 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
     let note = notes.get(note_id).unwrap();
 
     let estimated_size =
-        note.get_approx_height(ui.fonts(|r| r.row_height(&FontId::proportional(14.))) + 2.);
+        note.get_approx_height(ui.fonts(|r| r.row_height(&FontId::proportional(15.))) + 2.);
 
     let note_size = Vec2::new(150., estimated_size.max(150.));
 
@@ -723,13 +723,25 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
     //     sub_ui.label(note.get_clean_text());
     // }
 
-    sub_ui.label(
-        RichText::new(&note.get_clean_text()).color(readable_text(&Color32::from_rgb(
-            note.color[0],
-            note.color[1],
-            note.color[2],
-        ))), // .size(12.)
+    sub_ui.add(
+        egui::Label::new(
+            RichText::new(&note.get_clean_text_truncated()).color(readable_text(
+                &Color32::from_rgb(note.color[0], note.color[1], note.color[2]),
+            )),
+        )
+        .truncate(true)
+        .wrap(true),
     );
+
+    // sub_ui.label(
+    //     RichText::new(&note.get_clean_text())
+    //     .color(readable_text(&Color32::from_rgb(
+    //         note.color[0],
+    //         note.color[1],
+    //         note.color[2],
+    //     ))
+    // ), // .size(12.)
+    // );
 
     // sub_ui.label(&note.text);
     // sub_ui.add_space(20.);
