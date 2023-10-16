@@ -1,4 +1,5 @@
 use egui::Color32;
+use log::info;
 use rand::prelude::*;
 use rand_chacha::ChaCha20Rng;
 use std::collections::BTreeSet;
@@ -45,6 +46,26 @@ impl Note {
         n
     }
 
+    pub fn get_final_prio(&self) -> f32 {
+        match self.deadline {
+            Deadline::Eternal => self.priority,
+            Deadline::Periodic { start, days } => self.priority,
+            Deadline::Fixed(date) => {
+                // this is the alerting range - the hours in a work week. Anything later is not affecting prio.
+                // TODO later this should be configurable
+                let panic_range = (24 * 5) as f32;
+                let remaining = date
+                    .signed_duration_since(chrono::Utc::now().date_naive())
+                    .num_hours() as f32;
+                let weight =  1. - (remaining / panic_range);
+
+                // 96 / 120 
+                // println!("remainung minutes: {:?} {weight}", remaining);
+                self.priority + weight
+            }
+        }
+    }
+
     pub fn get_title(&self) -> &str {
         self.text.lines().next().unwrap_or("Default")
     }
@@ -54,7 +75,11 @@ impl Note {
     }
 
     pub fn get_excerpt(&self) -> String {
-        self.get_clean_text().lines().skip(1).collect::<Vec<_>>().join(" ")
+        self.get_clean_text()
+            .lines()
+            .skip(1)
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     pub fn get_clean_text(&self) -> String {

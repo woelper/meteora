@@ -810,7 +810,7 @@ fn draw_note_add_button(ui: &mut Ui) -> Response {
 
 fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
     let mut v = Vec::from_iter(state.notes.clone());
-    v.sort_by(|(_, a), (_, b)| b.priority.total_cmp(&a.priority));
+    v.sort_by(|(_, a), (_, b)| b.get_final_prio().total_cmp(&a.get_final_prio()));
 
     egui::ScrollArea::horizontal()
         // .auto_shrink([false,false])
@@ -855,7 +855,7 @@ fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
 
 fn listview(ui: &mut Ui, state: &mut MeteoraApp) {
     let mut v = Vec::from_iter(state.notes.clone());
-    v.sort_by(|(_, a), (_, b)| b.priority.total_cmp(&a.priority));
+    v.sort_by(|(_, a), (_, b)| b.get_final_prio().total_cmp(&a.get_final_prio()));
 
     egui::ScrollArea::vertical()
         // .auto_shrink([false,false])
