@@ -169,58 +169,146 @@ impl eframe::App for MeteoraApp {
             self.notes = notes;
         }
 
-        #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // The top panel is often a good place for a menu bar:
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    if ui.button("Quit").clicked() {
-                        _frame.close();
-                    }
-                    global_dark_light_mode_buttons(ui);
-                    if ui.button("Save").clicked() {
-                        if let Err(e) = self.storage_mode.save_notes(
-                            &self.notes,
-                            &self.credentials,
-                            &self.channels,
-                        ) {
-                            self.toasts.error(format!("Error saving notes! {e}"));
-                        } else {
-                            self.toasts.info("Saved!".to_string());
-                        }
-                        ui.close_menu();
-                    }
+        //    ui.allocate_exact_size(vec2(ui.available_width(), 30.), Sense::drag());
+           ui.add_space(10.);
 
-                    if ui.button("Restore").clicked() {
-                        match self
-                            .storage_mode
-                            .load_notes(&self.credentials, &self.channels)
-                        {
-                            Ok(_) => {
-                                self.toasts.info("Loaded notes!");
-                            }
-                            Err(e) => {
-                                self.toasts.error(format!("Error restoring notes! {e}"));
-                            }
+            ui.horizontal(|ui| {
+                egui::menu::bar(ui, |ui| {
+                    ui.menu_button("☰", |ui| {
+                        #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
+                        if ui.button("Quit").clicked() {
+                            _frame.close();
                         }
-                        ui.close_menu();
-                    }
+                        global_dark_light_mode_buttons(ui);
+                        if ui.button("Save").clicked() {
+                            if let Err(e) = self.storage_mode.save_notes(
+                                &self.notes,
+                                &self.credentials,
+                                &self.channels,
+                            ) {
+                                self.toasts.error(format!("Error saving notes! {e}"));
+                            } else {
+                                self.toasts.info("Saved!".to_string());
+                            }
+                            ui.close_menu();
+                        }
+
+                        if ui.button("Restore").clicked() {
+                            match self
+                                .storage_mode
+                                .load_notes(&self.credentials, &self.channels)
+                            {
+                                Ok(_) => {
+                                    self.toasts.info("Loaded notes!");
+                                }
+                                Err(e) => {
+                                    self.toasts.error(format!("Error restoring notes! {e}"));
+                                }
+                            }
+                            ui.close_menu();
+                        }
+
+                        ui.collapsing("Settings", |ui| {
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.credentials.0).hint_text("Username"),
+                            );
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.credentials.1)
+                                    .hint_text("Encryption Key"),
+                            );
+        
+                            egui::ComboBox::from_label("View")
+                                .selected_text(format!("{:?}", self.viewmode))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut self.viewmode, ViewMode::Board, "Board");
+                                    ui.selectable_value(&mut self.viewmode, ViewMode::List, "List");
+                                    ui.selectable_value(&mut self.viewmode, ViewMode::Graph, "Graph");
+                                });
+        
+                            egui::ComboBox::from_label("Storage")
+                                .selected_text(format!("{:?}", self.storage_mode))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut self.storage_mode,
+                                        StorageMode::Local {
+                                            path: PathBuf::from("backup.json"),
+                                        },
+                                        "Local",
+                                    );
+                                    // let k = env!("KEY", "");
+                                    ui.selectable_value(
+                                        &mut self.storage_mode,
+                                        StorageMode::JsonBin {
+                                            masterkey: include_str!("../key.jsonbin.master").into(),
+                                            bin_id: None,
+                                        },
+                                        "JsonBin",
+                                    );
+                                });
+        
+                            match &mut self.storage_mode {
+                                StorageMode::Local { path } => {
+                                    let mut s = path.to_string_lossy().to_string();
+                                    if ui.text_edit_singleline(&mut s).changed() {
+                                        *path = PathBuf::from(s);
+                                    }
+                                }
+                                StorageMode::JsonBin {
+                                    masterkey: _,
+                                    bin_id,
+                                } => {
+                                    if bin_id.is_none() {
+                                        ui.label("Your data has never been published.");
+        
+                                        if ui.button("Restore from username").clicked() {
+                                            *bin_id = Some(self.credentials.0.clone());
+        
+                                            _ = self
+                                                .storage_mode
+                                                .load_notes(&self.credentials, &self.channels);
+                                        }
+        
+                                        if ui.button("Publish as new").clicked() {
+                                            if let Err(e) = self.storage_mode.save_notes(
+                                                &self.notes,
+                                                &self.credentials,
+                                                &self.channels,
+                                            ) {
+                                                self.toasts.error(format!("Error publishing notes! {e}"));
+                                            }
+                                        }
+                                    } else {
+                                        ui.label(format!("Bin ID: {}", bin_id.clone().unwrap_or_default()));
+                                        if ui.button("Copy to clipboard").clicked() {
+                                            ui.output_mut(|o| {
+                                                o.copied_text = bin_id.clone().unwrap_or_default()
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+        
+                            global_dark_light_mode_buttons(ui);
+                        });
+
+
+                    });
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.filter).hint_text("🔍 Search notes..."),
+                    );
                 });
             });
+
+           ui.add_space(10.);
+
         });
 
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.label("🔍");
-                ui.add(egui::TextEdit::singleline(&mut self.filter).hint_text("Search notes..."));
-            });
-
             ui.heading("Tags");
+            ui.separator();
 
-            ui.vertical_centered_justified(|ui| {
-                if ui.button("Show all").clicked() {
-                    self.active_tags.clear();
-                }
+            ui.vertical(|ui| {
                 let all_used_tags = self
                     .notes
                     .iter()
@@ -243,6 +331,11 @@ impl eframe::App for MeteoraApp {
                         } else {
                             self.active_tags.insert(tag.clone());
                         }
+                    }
+                }
+                if !self.active_tags.is_empty() {
+                    if ui.button("Show all").clicked() {
+                        self.active_tags.clear();
                     }
                 }
 
@@ -285,88 +378,7 @@ impl eframe::App for MeteoraApp {
                     });
                 });
 
-                ui.collapsing("Settings", |ui| {
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.credentials.0).hint_text("Username"),
-                    );
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.credentials.1)
-                            .hint_text("Encryption Key"),
-                    );
-
-                    egui::ComboBox::from_label("View")
-                        .selected_text(format!("{:?}", self.viewmode))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.viewmode, ViewMode::Board, "Board");
-                            ui.selectable_value(&mut self.viewmode, ViewMode::List, "List");
-                            ui.selectable_value(&mut self.viewmode, ViewMode::Graph, "Graph");
-                        });
-
-                    egui::ComboBox::from_label("Storage")
-                        .selected_text(format!("{:?}", self.storage_mode))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(
-                                &mut self.storage_mode,
-                                StorageMode::Local {
-                                    path: PathBuf::from("backup.json"),
-                                },
-                                "Local",
-                            );
-                            // let k = env!("KEY", "");
-                            ui.selectable_value(
-                                &mut self.storage_mode,
-                                StorageMode::JsonBin {
-                                    masterkey: include_str!("../key.jsonbin.master").into(),
-                                    bin_id: None,
-                                },
-                                "JsonBin",
-                            );
-                        });
-
-                    match &mut self.storage_mode {
-                        StorageMode::Local { path } => {
-                            let mut s = path.to_string_lossy().to_string();
-                            if ui.text_edit_singleline(&mut s).changed() {
-                                *path = PathBuf::from(s);
-                            }
-                        }
-                        StorageMode::JsonBin {
-                            masterkey: _,
-                            bin_id,
-                        } => {
-                            if bin_id.is_none() {
-                                ui.label("Your data has never been published.");
-
-                                if ui.button("Restore from username").clicked() {
-                                    *bin_id = Some(self.credentials.0.clone());
-
-                                    _ = self
-                                        .storage_mode
-                                        .load_notes(&self.credentials, &self.channels);
-                                }
-
-                                if ui.button("Publish as new").clicked() {
-                                    if let Err(e) = self.storage_mode.save_notes(
-                                        &self.notes,
-                                        &self.credentials,
-                                        &self.channels,
-                                    ) {
-                                        self.toasts.error(format!("Error publishing notes! {e}"));
-                                    }
-                                }
-                            } else {
-                                ui.label(format!("Bin ID: {}", bin_id.clone().unwrap_or_default()));
-                                if ui.button("Copy to clipboard").clicked() {
-                                    ui.output_mut(|o| {
-                                        o.copied_text = bin_id.clone().unwrap_or_default()
-                                    });
-                                }
-                            }
-                        }
-                    }
-
-                    global_dark_light_mode_buttons(ui);
-                });
+               
             });
         });
 
