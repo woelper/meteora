@@ -2,6 +2,7 @@
 
 Meteora is an experiment in note taking.
 
+Principles:
 - A sense of urgency: Notes can be indefinite, periodic or deadlined
 - Progress: Notes progress depending on granular completion
 - Priority: Each not has a priotity, amplified by urgency
@@ -10,6 +11,20 @@ Meteora is an experiment in note taking.
 
 Test it here:
 https://woelper.github.io/meteora/
+
+
+![screenshot](assets/screenshot_1.png)
+
+### Work in progress!
+This is an experiment! Prepare to lose your data!
+
+What works:
+- Note encryption. Don't lose your key!
+- Local and jsonbin storage. Use a key to encrypt your notes!
+- Linking notes
+- Tagging notes
+- Date and Eternal deadlines
+
 
 
 ---
@@ -45,7 +60,7 @@ https://woelper.github.io/meteora/
 - [X] Nice "New Note" button
 - [x] Delete should remove id
 - [x] When tag is selected, new note has tag
-- [x] Fonts
+- [x] Nicer fonts
 - [x] Seed based on tags
 - [x] Shadow
 - [x] active note on top, like google keep
