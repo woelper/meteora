@@ -16,7 +16,7 @@ eframe = { version = "0.23", default-features = false, features = [
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 log = "0.4"
-egui_extras = { version = "0.23", features = ["datepicker"] }
+egui_extras = { version = "0.23", features = ["datepicker", "all_loaders"] }
 egui-notify = "0.10"
 ehttp = "0.3"
 getrandom = { version = "0.2", features = ["js"] }
