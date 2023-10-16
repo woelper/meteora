@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="210mm"
-   height="297mm"
-   viewBox="0 0 210 297"
+   width="256"
+   height="256"
+   viewBox="0 0 256 256"
    version="1.1"
    id="svg1"
    inkscape:version="1.3 (0e150ed, 2023-07-21)"
@@ -22,44 +22,85 @@
      inkscape:pageopacity="0.0"
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
-     inkscape:document-units="mm"
-     inkscape:zoom="4.1509418"
-     inkscape:cx="338.83877"
-     inkscape:cy="605.52524"
-     inkscape:window-width="1456"
+     inkscape:document-units="px"
+     inkscape:zoom="1.4281431"
+     inkscape:cx="127.78831"
+     inkscape:cy="128.48852"
+     inkscape:window-width="928"
      inkscape:window-height="798"
      inkscape:window-x="0"
      inkscape:window-y="38"
      inkscape:window-maximized="0"
-     inkscape:current-layer="layer1" />
+     inkscape:current-layer="layer1"
+     showborder="true"
+     shape-rendering="auto"
+     inkscape:clip-to-page="false" />
   <defs
      id="defs1">
     <rect
        x="109.18809"
-       y="269.44804"
-       width="630.47319"
-       height="471.97434"
+       y="269.44803"
+       width="630.47321"
+       height="471.97433"
        id="rect2" />
     <rect
        x="102.1437"
-       y="294.10341"
-       width="510.7185"
-       height="368.06954"
+       y="294.10342"
+       width="510.71851"
+       height="368.06955"
        id="rect1" />
+    <filter
+       style="color-interpolation-filters:sRGB"
+       inkscape:label="Drop Shadow"
+       id="filter39"
+       x="-0.44009626"
+       y="-0.43119772"
+       width="1.8801925"
+       height="1.8623954">
+      <feFlood
+         result="flood"
+         in="SourceGraphic"
+         flood-opacity="0.470588"
+         flood-color="rgb(0,0,0)"
+         id="feFlood38" />
+      <feGaussianBlur
+         result="blur"
+         in="SourceGraphic"
+         stdDeviation="1.500000"
+         id="feGaussianBlur38" />
+      <feOffset
+         result="offset"
+         in="blur"
+         dx="0.000000"
+         dy="0.000000"
+         id="feOffset38" />
+      <feComposite
+         result="comp1"
+         operator="in"
+         in="flood"
+         in2="offset"
+         id="feComposite38" />
+      <feComposite
+         result="comp2"
+         operator="over"
+         in="SourceGraphic"
+         in2="comp1"
+         id="feComposite39" />
+    </filter>
   </defs>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1">
     <circle
-       style="fill:#f2f2f2;fill-opacity:1;stroke:none;stroke-width:3.2518"
+       style="fill:#f2f2f2;fill-opacity:1;stroke:none;stroke-width:49.8958"
        id="path4"
-       cx="83.331665"
-       cy="156.56001"
-       r="8.1456995"
-       inkscape:export-filename="maskable_icon_x512.png"
-       inkscape:export-xdpi="798.26172"
-       inkscape:export-ydpi="798.26172" />
+       cx="128.04175"
+       cy="128.22809"
+       r="124.98747"
+       inkscape:export-filename="icon_ios_touch_192.png"
+       inkscape:export-xdpi="299.34814"
+       inkscape:export-ydpi="299.34814" />
     <text
        xml:space="preserve"
        transform="scale(0.26458333)"
@@ -72,26 +113,15 @@
        style="font-size:37.3333px;font-family:Futura;-inkscape-font-specification:Futura;white-space:pre;shape-inside:url(#rect2);display:inline;fill:#1a1a1a;fill-opacity:1;stroke:#f9f9f9;stroke-width:8.56063" />
     <text
        xml:space="preserve"
-       style="font-size:9.87777px;font-family:Futura;-inkscape-font-specification:Futura;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.265"
-       x="78.746773"
-       y="162.61908"
-       id="text3"><tspan
+       style="font-size:9.87777px;font-family:Futura;-inkscape-font-specification:Futura;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.265;filter:url(#filter39)"
+       x="21.780506"
+       y="39.365688"
+       id="text3"
+       transform="matrix(15.343982,0,0,15.343982,-278.87904,-418.38696)"><tspan
          sodipodi:role="line"
          id="tspan3"
          style="stroke-width:2.265"
-         x="78.746773"
-         y="162.61908">M</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-size:9.87777px;font-family:Futura;-inkscape-font-specification:Futura;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.265"
-       x="-87.20533"
-       y="-150.37151"
-       id="text4"
-       transform="scale(-1)"><tspan
-         sodipodi:role="line"
-         id="tspan4"
-         style="stroke-width:2.265"
-         x="-87.20533"
-         y="-150.37151">A</tspan></text>
+         x="21.780506"
+         y="39.365688">M</tspan></text>
   </g>
 </svg>
