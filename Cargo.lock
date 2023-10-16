@@ -980,6 +980,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui-phosphor"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03386094f4a647031637cf2ff2681ba86e140b4a1ee2d60242e5e691c034afdb"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "egui-winit"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1784,6 +1793,7 @@ dependencies = [
  "eframe",
  "egui",
  "egui-notify",
+ "egui-phosphor",
  "egui_extras",
  "egui_graphs",
  "ehttp",
