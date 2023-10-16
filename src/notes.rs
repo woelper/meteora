@@ -57,9 +57,9 @@ impl Note {
                 let remaining = date
                     .signed_duration_since(chrono::Utc::now().date_naive())
                     .num_hours() as f32;
-                let weight =  1. - (remaining / panic_range);
+                let weight = 1. - (remaining / panic_range);
 
-                // 96 / 120 
+                // 96 / 120
                 // println!("remainung minutes: {:?} {weight}", remaining);
                 self.priority + weight
             }
@@ -92,6 +92,19 @@ impl Note {
         t.push('\n');
         t
     }
+
+    pub fn get_clean_text_truncated(&self) -> String {
+        let max = 200;
+        if self.get_clean_text().chars().count() > max {
+            format!(
+                "{}...",
+                self.get_clean_text().chars().take(max).collect::<String>()
+            )
+        } else {
+            self.get_clean_text()
+        }
+    }
+
     pub fn get_color(&self) -> Color32 {
         if self.tags.is_empty() {
             Color32::from_rgb(self.color[0], self.color[1], self.color[2])
@@ -116,9 +129,9 @@ impl Note {
     /// Calculate the approximate note height in px based on line height and chars per line
     pub fn get_approx_height(&self, line_height: f32) -> f32 {
         let chars_per_row = 15;
-        let newlines = self.get_clean_text().lines().count();
+        let newlines = self.get_clean_text_truncated().lines().count();
         let breaks: usize = self
-            .get_clean_text()
+            .get_clean_text_truncated()
             .lines()
             .map(|l| l.chars().count() / chars_per_row)
             .sum();
