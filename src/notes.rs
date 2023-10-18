@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use egui::Color32;
 use log::info;
 use rand::prelude::*;
@@ -29,6 +30,7 @@ pub struct Note {
     pub priority: f32,
     pub deadline: Deadline,
     pub complete: bool,
+    pub created: NaiveDate,
 }
 
 impl Note {
@@ -37,7 +39,8 @@ impl Note {
         let mut n = Self::default();
         let time = chrono::Utc::now().timestamp_micros();
         n.id = time as u128;
-        n.text = "Empty".to_string();
+        n.text = "".to_string();
+        n.created = chrono::Utc::now().date_naive();
         n.color = [
             rng.gen_range(0..255),
             rng.gen_range(0..255),
