@@ -38,7 +38,6 @@ What works:
 - [ ] show progress based on checkboxes
 - [ ] Markup toggle or detection / bug: commonmark renders strangely.
 - [ ] Custom basic markup
-- [ ] Get rid of username
 - [ ] Note color needs to come from theme
 - [ ] Deleting tag should reset active tag so notes are not empty
 - [ ] Generic edge connections
