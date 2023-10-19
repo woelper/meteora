@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap},
     path::PathBuf,
     sync::mpsc::{channel, Receiver, Sender},
 };
@@ -9,7 +9,6 @@ use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow, TextShape},
     global_dark_light_mode_buttons, vec2, Color32, FontData, FontFamily, FontId, Id, Layout, Pos2,
     Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
-    WidgetText,
 };
 use egui_graphs::{Graph, GraphView};
 use egui_notify::Toasts;
@@ -39,7 +38,7 @@ pub struct ScratchPad {
     sections: Vec<String>,
 }
 
-pub const GAMMA_MULT: f32 = 0.5;
+pub const GAMMA_MULT: f32 = 0.3;
 
 pub type Notes = BTreeMap<u128, Note>;
 
@@ -617,7 +616,9 @@ impl eframe::App for MeteoraApp {
             egui::Window::new("xxxxx")
                 .collapsible(false)
                 .title_bar(false)
-                .fixed_rect(ctx.screen_rect().shrink(80.).translate(vec2(-10.0, 00.)))
+                .fixed_rect(ctx.screen_rect().shrink(20.)
+                // .translate(vec2(-10.0, 00.))
+            )
                 .show(ctx, |ui| {
                     ui.vertical_centered_justified(|ui| {
                         edit_note(ui, &id, &mut self.tags, &mut self.notes);
@@ -649,7 +650,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
     ui.add_sized(
         [ui.available_width(), 10.],
         egui::TextEdit::multiline(&mut note.text)
-            .frame(false)
+            // .frame(false)
             .desired_width(f32::INFINITY)
             .margin(vec2(20., 20.))
             .desired_rows(15),
@@ -703,7 +704,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
 
     ui.group(|ui| {
         ui.allocate_space(vec2(ui.available_width(), 0.));
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             ui.label("Tags:");
             for tag in tags.iter() {
                 let contains = note.tags.contains(tag);
@@ -839,9 +840,11 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
 
     sub_ui.add(
         egui::Label::new(
-            RichText::new(&note.get_clean_text_truncated()).color(readable_text(
-                &Color32::from_rgb(note.color[0], note.color[1], note.color[2]),
-            )),
+            RichText::new(&note.get_clean_text_truncated())
+            // .color(readable_text(
+            //     &Color32::from_rgb(note.color[0], note.color[1], note.color[2]),
+            // )
+        // ),
         )
         .truncate(true)
         .wrap(true),
