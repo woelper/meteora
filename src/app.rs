@@ -193,14 +193,16 @@ impl eframe::App for MeteoraApp {
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             //    ui.allocate_exact_size(vec2(ui.available_width(), 30.), Sense::drag());
-            ui.add_space(10.);
+            let padding = 1.;
+            ui.add_space(padding+2.);
 
             ui.horizontal(|ui| {
                 let not_settings = !self.ui_state.settings_enabled;
+                
                 ui.selectable_value(
                     &mut self.ui_state.settings_enabled,
                     not_settings,
-                    egui::RichText::new(LIST).size(32.0),
+                    egui::RichText::new(if not_settings {LIST} else {X}).size(32.0),
                 );
                 ui.add(
                     egui::TextEdit::singleline(&mut self.filter)
@@ -208,13 +210,13 @@ impl eframe::App for MeteoraApp {
                         .hint_text("🔍 Search notes..."),
                 );
                 if !self.filter.is_empty() {
-                    if ui.button(X).clicked() {
+                    if bare_button(X, ui).clicked() {
                         self.filter.clear();
                     }
                 }
             });
 
-            ui.add_space(10.);
+            ui.add_space(padding);
         });
 
         if self.ui_state.settings_enabled {
@@ -648,6 +650,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
         [ui.available_width(), 10.],
         egui::TextEdit::multiline(&mut note.text)
             .frame(false)
+            .desired_width(f32::INFINITY)
             .margin(vec2(20., 20.))
             .desired_rows(15),
     );
