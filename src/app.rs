@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap},
+    collections::BTreeMap,
     path::PathBuf,
     sync::mpsc::{channel, Receiver, Sender},
 };
@@ -12,6 +12,7 @@ use egui::{
 };
 use egui_graphs::{Graph, GraphView};
 use egui_notify::Toasts;
+use log::info;
 use petgraph::{stable_graph::StableGraph, Directed};
 
 // use egui_commonmark::*;
@@ -38,7 +39,7 @@ pub struct ScratchPad {
     sections: Vec<String>,
 }
 
-pub const GAMMA_MULT: f32 = 0.3;
+pub const GAMMA_MULT: f32 = 0.8;
 
 pub type Notes = BTreeMap<u128, Note>;
 
@@ -193,15 +194,15 @@ impl eframe::App for MeteoraApp {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             //    ui.allocate_exact_size(vec2(ui.available_width(), 30.), Sense::drag());
             let padding = 1.;
-            ui.add_space(padding+2.);
+            ui.add_space(padding + 2.);
 
             ui.horizontal(|ui| {
                 let not_settings = !self.ui_state.settings_enabled;
-                
+
                 ui.selectable_value(
                     &mut self.ui_state.settings_enabled,
                     not_settings,
-                    egui::RichText::new(if not_settings {LIST} else {X}).size(32.0),
+                    egui::RichText::new(if not_settings { LIST } else { X }).size(32.0),
                 );
                 ui.add(
                     egui::TextEdit::singleline(&mut self.filter)
@@ -367,32 +368,34 @@ impl eframe::App for MeteoraApp {
                 let mut remove: Option<usize> = None;
 
                 for (i, section) in self.scratchpad.sections.iter_mut().enumerate() {
-                    egui::CollapsingHeader::new(section.lines().next().unwrap_or("New scratch".into()))
-                        .id_source(i)
-                        .show_unindented(ui, |ui| {
-                            ui.indent(i, |ui| {
-                                ui.style_mut().visuals.selection.stroke = Stroke::NONE;
-                                egui::TextEdit::multiline(section)
-                                    .desired_width(f32::INFINITY)
-                                    .hint_text("Enter some quick thoughts here!")
-                                    .show(ui);
-                                ui.horizontal(|ui| {
-                                    if bare_button(NOTE, ui)
-                                        .on_hover_text("Turn into note")
-                                        .clicked()
-                                    {
-                                        let mut n = Note::new();
-                                        n.text = section.clone();
-                                        self.notes.insert(n.id, n);
-                                        remove = Some(i);
-                                    }
+                    egui::CollapsingHeader::new(
+                        section.lines().next().unwrap_or("New scratch".into()),
+                    )
+                    .id_source(i)
+                    .show_unindented(ui, |ui| {
+                        ui.indent(i, |ui| {
+                            ui.style_mut().visuals.selection.stroke = Stroke::NONE;
+                            egui::TextEdit::multiline(section)
+                                .desired_width(f32::INFINITY)
+                                .hint_text("Enter some quick thoughts here!")
+                                .show(ui);
+                            ui.horizontal(|ui| {
+                                if bare_button(NOTE, ui)
+                                    .on_hover_text("Turn into note")
+                                    .clicked()
+                                {
+                                    let mut n = Note::new();
+                                    n.text = section.clone();
+                                    self.notes.insert(n.id, n);
+                                    remove = Some(i);
+                                }
 
-                                    if bare_button(TRASH, ui).on_hover_text("Delete").clicked() {
-                                        remove = Some(i);
-                                    }
-                                });
+                                if bare_button(TRASH, ui).on_hover_text("Delete").clicked() {
+                                    remove = Some(i);
+                                }
                             });
                         });
+                    });
                 }
 
                 if let Some(remove) = remove {
@@ -409,7 +412,7 @@ impl eframe::App for MeteoraApp {
                 });
                 ui.separator();
 
-                ui.vertical(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     let all_used_tags = self
                         .notes
                         .iter()
@@ -422,10 +425,22 @@ impl eframe::App for MeteoraApp {
                         }
                         let contained = self.active_tags.contains(tag);
 
-                        ui.style_mut().visuals.selection.bg_fill =
-                            color_from_tag(tag).gamma_multiply(GAMMA_MULT);
-                        // ui.label(format!("{:?}",color_from_tag(tag)));
-                        if ui.add(SelectableLabel::new(contained, tag)).clicked() {
+                        let tag_color = color_from_tag(tag);
+
+                        if contained {
+                            ui.style_mut().visuals.selection.bg_fill =
+                                tag_color.gamma_multiply(GAMMA_MULT);
+                        }
+
+
+
+                        if ui
+                            .add(SelectableLabel::new(
+                                contained,
+                                if contained{RichText::new(tag).color(readable_text(&tag_color))} else {RichText::new(tag)},
+                            ))
+                            .clicked()
+                        {
                             // if ui.selectable_label(contained, tag).clicked() {
                             if contained {
                                 self.active_tags.remove(tag);
@@ -434,49 +449,54 @@ impl eframe::App for MeteoraApp {
                             }
                         }
                     }
-                    if !self.active_tags.is_empty() {
-                        if ui.button("Show all").clicked() {
-                            self.active_tags.clear();
-                        }
+                    
+                });
+
+                ui.separator();
+
+
+                if !self.active_tags.is_empty() {
+                    if ui.button("Show all").clicked() {
+                        self.active_tags.clear();
+                    }
+                }
+
+                ui.collapsing("Edit", |ui| {
+                    if ui.button("Add tag").clicked() {
+                        self.tags.push("New Tag".into());
                     }
 
-                    ui.collapsing("Edit", |ui| {
-                        if ui.button("Add tag").clicked() {
-                            self.tags.push("New Tag".into());
+                    egui::ScrollArea::horizontal().show(ui, |ui| {
+                        let mut tag_index_to_delete: Option<usize> = None;
+
+                        for (i, tag) in &mut self.tags.iter_mut().enumerate() {
+                            ui.horizontal(|ui| {
+                                if ui
+                                    .button("🗑")
+                                    .on_hover_text("Delete this tag from list and all notes.")
+                                    .clicked()
+                                {
+                                    for note in self.notes.values_mut() {
+                                        note.tags.remove(tag);
+                                    }
+                                    tag_index_to_delete = Some(i);
+                                }
+                                let old_tag = tag.clone();
+                                if ui.text_edit_singleline(tag).changed() {
+                                    // If a tag is renamed, we need to rename it in all notes.
+                                    for note in self.notes.values_mut() {
+                                        if note.tags.contains(&old_tag) {
+                                            note.tags.remove(&old_tag);
+                                            note.tags.insert(tag.clone());
+                                        }
+                                    }
+                                }
+                            });
                         }
 
-                        egui::ScrollArea::horizontal().show(ui, |ui| {
-                            let mut tag_index_to_delete: Option<usize> = None;
-
-                            for (i, tag) in &mut self.tags.iter_mut().enumerate() {
-                                ui.horizontal(|ui| {
-                                    if ui
-                                        .button("🗑")
-                                        .on_hover_text("Delete this tag from list and all notes.")
-                                        .clicked()
-                                    {
-                                        for note in self.notes.values_mut() {
-                                            note.tags.remove(tag);
-                                        }
-                                        tag_index_to_delete = Some(i);
-                                    }
-                                    let old_tag = tag.clone();
-                                    if ui.text_edit_singleline(tag).changed() {
-                                        // If a tag is renamed, we need to rename it in all notes.
-                                        for note in self.notes.values_mut() {
-                                            if note.tags.contains(&old_tag) {
-                                                note.tags.remove(&old_tag);
-                                                note.tags.insert(tag.clone());
-                                            }
-                                        }
-                                    }
-                                });
-                            }
-
-                            if let Some(i) = tag_index_to_delete {
-                                self.tags.remove(i);
-                            }
-                        });
+                        if let Some(i) = tag_index_to_delete {
+                            self.tags.remove(i);
+                        }
                     });
                 });
             });
@@ -616,9 +636,9 @@ impl eframe::App for MeteoraApp {
             egui::Window::new("xxxxx")
                 .collapsible(false)
                 .title_bar(false)
-                .fixed_rect(ctx.screen_rect().shrink(20.)
-                // .translate(vec2(-10.0, 00.))
-            )
+                .fixed_rect(
+                    ctx.screen_rect().shrink(20.), // .translate(vec2(-10.0, 00.))
+                )
                 .show(ctx, |ui| {
                     ui.vertical_centered_justified(|ui| {
                         edit_note(ui, &id, &mut self.tags, &mut self.notes);
@@ -793,6 +813,11 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
         Stroke::NONE
     };
 
+    #[cfg(debug_assertions)]
+    if resp.hovered() {
+        info!("note color {:?}", note.color);
+    }
+
     let frame_shape = Shape::Rect(RectShape::new(rect, 5.0, note.get_color(), stroke));
 
     let mut shapes_to_draw = vec![frame_shape];
@@ -840,11 +865,9 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
 
     sub_ui.add(
         egui::Label::new(
-            RichText::new(&note.get_clean_text_truncated())
-            // .color(readable_text(
-            //     &Color32::from_rgb(note.color[0], note.color[1], note.color[2]),
-            // )
-        // ),
+            RichText::new(&note.get_clean_text_truncated()).color(readable_text(
+                &note.get_color(),
+            )),
         )
         .truncate(true)
         .wrap(true),

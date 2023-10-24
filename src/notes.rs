@@ -153,12 +153,19 @@ impl Note {
 pub fn color_from_tag(tag: &str) -> Color32 {
     let x: i32 = tag.as_bytes().iter().map(|x| *x as i32).sum();
     let mut rng = ChaCha20Rng::seed_from_u64(x as u64);
+    let g = colorgrad::rainbow();
+
+    let g = colorgrad::CustomGradient::new()
+    .html_colors(&["gold", "hotpink", "darkturquoise", "seagreen"])
+    .build().unwrap();
+
+    let c = g.at(rng.gen_range(0.0..1.0));
+
     Color32::from_rgb(
-        rng.gen_range(0..255),
-        rng.gen_range(0..255),
-        rng.gen_range(0..255),
+        (c.r * 255.) as u8,
+        (c.g * 255.) as u8,
+        (c.b * 255.) as u8,
     )
-    // .linear_multiply(0.1)
 }
 
 pub fn link_text(raw_link: &str) -> &str {
@@ -174,9 +181,11 @@ pub fn link_text(raw_link: &str) -> &str {
 // determine the color's brigheness level and then invert it
 pub fn readable_text(color: &Color32) -> Color32 {
     let brightness = color.r() as f32 * 0.299 + color.g() as f32 * 0.587 + color.b() as f32 * 0.114;
-    if brightness > 60.0 {
-        Color32::from_rgb(0, 0, 0)
+    if brightness > 120.0 {
+        Color32::from_rgb(40, 40, 40)
     } else {
-        Color32::from_rgb(255, 255, 255)
+        Color32::from_rgb(230, 230, 230)
     }
+    // Color32::from_rgb(255-color.r(), 255-color.g(), 255-color.b())
+    
 }
