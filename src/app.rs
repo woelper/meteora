@@ -2,6 +2,7 @@ use std::{
     collections::BTreeMap,
     path::PathBuf,
     sync::mpsc::{channel, Receiver, Sender},
+    time::Duration,
 };
 
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note, StorageMode};
@@ -12,7 +13,7 @@ use egui::{
 };
 use egui_graphs::{Graph, GraphView};
 use egui_notify::Toasts;
-use log::info;
+use log::{error, info};
 use petgraph::{stable_graph::StableGraph, Directed};
 
 // use egui_commonmark::*;
@@ -165,9 +166,9 @@ impl eframe::App for MeteoraApp {
         {
             if let Err(e) =
                 self.storage_mode
-                    .save_notes(&self.notes, &self.credentials, &self.channels)
+                    .save_notes(&self.notes, &self.credentials, &self.channels, false)
             {
-                eprintln!("{e}")
+                error!("{e}")
             }
         }
     }
@@ -187,8 +188,14 @@ impl eframe::App for MeteoraApp {
         }
 
         if let Ok(notes) = self.channels.note_channel.1.try_recv() {
-            self.toasts.info(format!("Loaded {} notes", notes.len()));
             self.notes = notes;
+        }
+        if let Ok(msg) = self.channels.msg_channel.1.try_recv() {
+            match msg {
+                Message::Info(t) => self.toasts.info(t),
+                Message::Warn(t) => self.toasts.warning(t),
+                Message::Err(t) => self.toasts.error(t),
+            };
         }
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -250,29 +257,18 @@ impl eframe::App for MeteoraApp {
 
                 ui.horizontal(|ui| {
                     if ui.button("SAVE").clicked() {
-                        if let Err(e) = self.storage_mode.save_notes(
+                        _ = self.storage_mode.save_notes(
                             &self.notes,
                             &self.credentials,
                             &self.channels,
-                        ) {
-                            self.toasts.error(format!("Error saving notes! {e}"));
-                        } else {
-                            self.toasts.info("Saved!".to_string());
-                        }
+                            true
+                        );
                     }
 
                     if ui.button("RESTORE").clicked() {
-                        match self
+                        _ = self
                             .storage_mode
-                            .load_notes(&self.credentials, &self.channels)
-                        {
-                            Ok(_) => {
-                                self.toasts.info("Loaded notes!");
-                            }
-                            Err(e) => {
-                                self.toasts.error(format!("Error restoring notes! {e}"));
-                            }
-                        }
+                            .load_notes(&self.credentials, &self.channels);
                     }
                 });
 
@@ -331,6 +327,7 @@ impl eframe::App for MeteoraApp {
                                     &self.notes,
                                     &self.credentials,
                                     &self.channels,
+                                    true
                                 ) {
                                     self.toasts.error(format!("Error publishing notes! {e}"));
                                 }
@@ -432,12 +429,14 @@ impl eframe::App for MeteoraApp {
                                 tag_color.gamma_multiply(GAMMA_MULT);
                         }
 
-
-
                         if ui
                             .add(SelectableLabel::new(
                                 contained,
-                                if contained{RichText::new(tag).color(readable_text(&tag_color))} else {RichText::new(tag)},
+                                if contained {
+                                    RichText::new(tag).color(readable_text(&tag_color))
+                                } else {
+                                    RichText::new(tag)
+                                },
                             ))
                             .clicked()
                         {
@@ -449,11 +448,9 @@ impl eframe::App for MeteoraApp {
                             }
                         }
                     }
-                    
                 });
 
                 ui.separator();
-
 
                 if !self.active_tags.is_empty() {
                     if ui.button("Show all").clicked() {
@@ -865,9 +862,7 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
 
     sub_ui.add(
         egui::Label::new(
-            RichText::new(&note.get_clean_text_truncated()).color(readable_text(
-                &note.get_color(),
-            )),
+            RichText::new(&note.get_clean_text_truncated()).color(readable_text(&note.get_color())),
         )
         .truncate(true)
         .wrap(true),

@@ -153,7 +153,7 @@ impl Note {
 pub fn color_from_tag(tag: &str) -> Color32 {
     let x: i32 = tag.as_bytes().iter().map(|x| *x as i32).sum();
     let mut rng = ChaCha20Rng::seed_from_u64(x as u64);
-    let g = colorgrad::rainbow();
+    // let g = colorgrad::rainbow();
 
     let g = colorgrad::CustomGradient::new()
     .html_colors(&["gold", "hotpink", "darkturquoise", "seagreen"])

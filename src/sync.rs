@@ -1,13 +1,10 @@
-use anyhow::{anyhow, Context, Result, bail};
+use anyhow::{anyhow, bail, Context, Result};
 
 use ehttp::headers;
+use log::info;
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 use serde_json::json;
-use std::{
-    collections::BTreeMap,
-    fs::write,
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, fs::write, path::PathBuf};
 
 use crate::{
     app::{Channels, Message, Notes},
@@ -40,6 +37,7 @@ impl StorageMode {
         notes: &BTreeMap<u128, Note>,
         credentials: &(String, String),
         channels: &Channels,
+        manual_save: bool
     ) -> Result<()> {
         let id_sender = channels.id_channel.0.clone();
         let msg_sender = channels.msg_channel.0.clone();
@@ -49,6 +47,10 @@ impl StorageMode {
                 #[cfg(not(target_arch = "wasm32"))]
                 if let Ok(enc) = encrypt_notes(notes, credentials) {
                     _ = write(path, enc);
+                    if manual_save {
+                        _ = msg_sender.send(Message::Info("Saved notes!".into()));
+
+                    }
                 }
             }
             StorageMode::JsonBin { masterkey, bin_id } => {
@@ -75,6 +77,10 @@ impl StorageMode {
                         match id_from_response(result) {
                             Ok(id) => {
                                 _ = id_sender.send(id);
+                                info!("Saved");
+                                if manual_save {
+                                    _ = msg_sender.send(Message::Info("Saved notes!".into()));
+                                }
                             }
                             Err(e) => {
                                 _ = msg_sender.send(Message::err(&e.to_string()));
@@ -100,7 +106,10 @@ impl StorageMode {
                     ehttp::fetch(
                         request,
                         move |result: ehttp::Result<ehttp::Response>| match result {
-                            Ok(_id) => {}
+                            Ok(_id) => {
+                                info!("Saved");
+                                _ = msg_sender.send(Message::Info("Saved notes!".into()));
+                            }
                             Err(e) => {
                                 _ = msg_sender.send(Message::err(&e.to_string()));
                             }
@@ -120,8 +129,9 @@ impl StorageMode {
             StorageMode::Local { path } => {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    let encrypted_notes = std::fs::read_to_string(path)?;
-                    let notes = decrypt_notes(&encrypted_notes, credentials)?;
+                    let decrypted_notes = std::fs::read_to_string(path)?;
+                    let notes = decrypt_notes(&decrypted_notes, credentials)?;
+                    _ = msg_sender.send(Message::Info(format!("Loaded {} notes", notes.len())));
                     _ = note_sender.send(notes);
                     Ok(())
                 }
@@ -154,6 +164,8 @@ impl StorageMode {
                     match notes_from_response(result, &credentials) {
                         Ok(notes) => {
                             // let n = decrypt_notes(&String::from_utf8_lossy(&resp.bytes), &credentials).unwrap();
+                            _ = msg_sender
+                                .send(Message::Info(format!("Loaded {} notes", notes.len())));
                             _ = note_sender.send(notes);
                         }
                         Err(e) => {
