@@ -10,10 +10,11 @@
    inkscape:version="1.3 (0e150ed, 2023-07-21)"
    sodipodi:docname="logo.svg"
    inkscape:export-filename="icon-1024.png"
-   inkscape:export-xdpi="299.34814"
-   inkscape:export-ydpi="299.34814"
+   inkscape:export-xdpi="384"
+   inkscape:export-ydpi="384"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <sodipodi:namedview
@@ -26,13 +27,13 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="px"
-     inkscape:zoom="1.4281431"
-     inkscape:cx="127.78831"
-     inkscape:cy="128.48852"
-     inkscape:window-width="928"
+     inkscape:zoom="0.98142007"
+     inkscape:cx="53.493913"
+     inkscape:cy="50.437118"
+     inkscape:window-width="1248"
      inkscape:window-height="798"
-     inkscape:window-x="2053"
-     inkscape:window-y="256"
+     inkscape:window-x="76"
+     inkscape:window-y="87"
      inkscape:window-maximized="0"
      inkscape:current-layer="layer1"
      showborder="true"
@@ -40,6 +41,18 @@
      inkscape:clip-to-page="false" />
   <defs
      id="defs1">
+    <linearGradient
+       id="linearGradient1"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#ffff00;stop-opacity:1"
+         offset="0"
+         id="stop1" />
+      <stop
+         style="stop-color:#ff6600;stop-opacity:1"
+         offset="1"
+         id="stop2" />
+    </linearGradient>
     <rect
        x="109.18809"
        y="269.44803"
@@ -90,18 +103,65 @@
          in2="comp1"
          id="feComposite39" />
     </filter>
+    <filter
+       style="color-interpolation-filters:sRGB"
+       inkscape:label="Drop Shadow"
+       id="filter39-8"
+       x="-0.44009626"
+       y="-0.43119772"
+       width="1.8801925"
+       height="1.8623954">
+      <feFlood
+         result="flood"
+         in="SourceGraphic"
+         flood-opacity="0.470588"
+         flood-color="rgb(0,0,0)"
+         id="feFlood38-0" />
+      <feGaussianBlur
+         result="blur"
+         in="SourceGraphic"
+         stdDeviation="1.500000"
+         id="feGaussianBlur38-2" />
+      <feOffset
+         result="offset"
+         in="blur"
+         dx="0.000000"
+         dy="0.000000"
+         id="feOffset38-4" />
+      <feComposite
+         result="comp1"
+         operator="in"
+         in="flood"
+         in2="offset"
+         id="feComposite38-8" />
+      <feComposite
+         result="comp2"
+         operator="over"
+         in="SourceGraphic"
+         in2="comp1"
+         id="feComposite39-3" />
+    </filter>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient1"
+       id="linearGradient2"
+       x1="212.95673"
+       y1="-29.549019"
+       x2="-15.283975"
+       y2="327.07709"
+       gradientUnits="userSpaceOnUse" />
   </defs>
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1">
     <circle
-       style="fill:#f2f2f2;fill-opacity:1;stroke:none;stroke-width:49.8958"
+       style="fill:url(#linearGradient2);fill-opacity:1;stroke:none;stroke-width:49.8958"
        id="path4"
        cx="128.04175"
        cy="128.22809"
        r="124.98747"
-       inkscape:export-filename="icon_ios_touch_192.png"
+       inkscape:export-filename="icon-1024.png"
        inkscape:export-xdpi="299.34814"
        inkscape:export-ydpi="299.34814" />
     <text
@@ -114,17 +174,31 @@
        transform="scale(0.26458333)"
        id="text2"
        style="font-size:37.3333px;font-family:Futura;-inkscape-font-specification:Futura;white-space:pre;shape-inside:url(#rect2);display:inline;fill:#1a1a1a;fill-opacity:1;stroke:#f9f9f9;stroke-width:8.56063" />
+    <circle
+       style="fill:#f2f2f2;fill-opacity:1;stroke:none;stroke-width:49.8958"
+       id="path4-0"
+       cx="547.51892"
+       cy="352.34515"
+       r="124.98747"
+       inkscape:export-filename="icon_ios_touch_192.png"
+       inkscape:export-xdpi="299.34814"
+       inkscape:export-ydpi="299.34814" />
     <text
        xml:space="preserve"
-       style="font-size:9.87777px;font-family:Futura;-inkscape-font-specification:Futura;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.265;filter:url(#filter39)"
+       style="font-size:9.87777px;font-family:Futura;-inkscape-font-specification:Futura;fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.265;filter:url(#filter39-8)"
        x="21.780506"
        y="39.365688"
-       id="text3"
-       transform="matrix(15.343982,0,0,15.343982,-278.87904,-418.38696)"><tspan
+       id="text3-5"
+       transform="matrix(15.343982,0,0,15.343982,140.59811,-194.26991)"><tspan
          sodipodi:role="line"
-         id="tspan3"
+         id="tspan3-2"
          style="stroke-width:2.265"
          x="21.780506"
          y="39.365688">M</tspan></text>
+    <path
+       style="fill:#1a1a1a;stroke-width:7.52629"
+       d="M 33.624746,183.61004 221.10818,184.42664 175.06837,74.302525 150.75132,102.02325 116.96758,32.504644 Z"
+       id="path1"
+       sodipodi:nodetypes="cccccc" />
   </g>
 </svg>
