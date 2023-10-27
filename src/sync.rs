@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, Context, Result};
 
 use ehttp::headers;
 use log::info;
@@ -107,8 +107,9 @@ impl StorageMode {
                         request,
                         move |result: ehttp::Result<ehttp::Response>| match result {
                             Ok(_id) => {
-                                info!("Saved");
-                                _ = msg_sender.send(Message::Info("Saved notes!".into()));
+                                if manual_save {
+                                    _ = msg_sender.send(Message::Info("Saved notes!".into()));
+                                }
                             }
                             Err(e) => {
                                 _ = msg_sender.send(Message::err(&e.to_string()));
