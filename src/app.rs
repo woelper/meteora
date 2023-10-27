@@ -13,7 +13,7 @@ use egui::{
 };
 use egui_graphs::{Graph, GraphView};
 use egui_notify::Toasts;
-use log::{error, info};
+use log::{debug, error, info};
 use petgraph::{stable_graph::StableGraph, Directed};
 
 // use egui_commonmark::*;
@@ -228,126 +228,142 @@ impl eframe::App for MeteoraApp {
 
         if self.ui_state.settings_enabled {
             egui::SidePanel::left("side_panel_settings").show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.heading(SLIDERS);
-                    ui.label("SETTINGS")
-                });
-                ui.separator();
-
-                egui::ComboBox::from_label("Storage")
-                    .selected_text(format!("{:?}", self.storage_mode))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(
-                            &mut self.storage_mode,
-                            StorageMode::Local {
-                                path: PathBuf::from("backup.json"),
-                            },
-                            "Local",
-                        );
-                        // let k = env!("KEY", "");
-                        ui.selectable_value(
-                            &mut self.storage_mode,
-                            StorageMode::JsonBin {
-                                masterkey: include_str!("../key.jsonbin.master").into(),
-                                bin_id: None,
-                            },
-                            "JsonBin",
-                        );
+                let mut r = ui.scope(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.heading(SLIDERS);
+                        ui.label("SETTINGS")
                     });
+                    ui.separator();
 
-                ui.horizontal(|ui| {
-                    if ui.button("SAVE").clicked() {
-                        _ = self.storage_mode.save_notes(
-                            &self.notes,
-                            &self.credentials,
-                            &self.channels,
-                            true
-                        );
-                    }
+                    egui::ComboBox::from_label("Storage")
+                        .selected_text(format!("{:?}", self.storage_mode))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(
+                                &mut self.storage_mode,
+                                StorageMode::Local {
+                                    path: PathBuf::from("backup.json"),
+                                },
+                                "Local",
+                            );
+                            // let k = env!("KEY", "");
+                            ui.selectable_value(
+                                &mut self.storage_mode,
+                                StorageMode::JsonBin {
+                                    masterkey: include_str!("../key.jsonbin.master").into(),
+                                    bin_id: None,
+                                },
+                                "JsonBin",
+                            );
+                        });
 
-                    if ui.button("RESTORE").clicked() {
-                        _ = self
-                            .storage_mode
-                            .load_notes(&self.credentials, &self.channels);
-                    }
-                });
-
-                ui.separator();
-
-                ui.horizontal(|ui| {
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.credentials.0)
-                            .hint_text("Username")
-                            .desired_width(150.),
-                    );
-                    ui.label("USER");
-                });
-                ui.horizontal(|ui| {
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.credentials.1)
-                            .hint_text("Encryption Key")
-                            .desired_width(150.)
-                            .password(true),
-                    );
-                    ui.label("SECRET");
-                });
-
-                egui::ComboBox::from_label("View")
-                    .selected_text(format!("{:?}", self.viewmode))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.viewmode, ViewMode::Board, "Board");
-                        ui.selectable_value(&mut self.viewmode, ViewMode::List, "List");
-                        ui.selectable_value(&mut self.viewmode, ViewMode::Graph, "Graph");
-                    });
-
-                match &mut self.storage_mode {
-                    StorageMode::Local { path } => {
-                        let mut s = path.to_string_lossy().to_string();
-                        if ui.text_edit_singleline(&mut s).changed() {
-                            *path = PathBuf::from(s);
+                    ui.horizontal(|ui| {
+                        if ui.button("SAVE").clicked() {
+                            _ = self.storage_mode.save_notes(
+                                &self.notes,
+                                &self.credentials,
+                                &self.channels,
+                                true,
+                            );
                         }
-                    }
-                    StorageMode::JsonBin {
-                        masterkey: _,
-                        bin_id,
-                    } => {
-                        if bin_id.is_none() {
-                            ui.label("Your data has never been published.");
 
-                            if ui.button("Restore from username").clicked() {
-                                *bin_id = Some(self.credentials.0.clone());
+                        if ui.button("RESTORE").clicked() {
+                            _ = self
+                                .storage_mode
+                                .load_notes(&self.credentials, &self.channels);
+                        }
+                    });
 
-                                _ = self
-                                    .storage_mode
-                                    .load_notes(&self.credentials, &self.channels);
+                    ui.separator();
+
+                    ui.horizontal(|ui| {
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.credentials.0)
+                                .hint_text("Username")
+                                .desired_width(150.),
+                        );
+                        ui.label("USER");
+                    });
+                    ui.horizontal(|ui| {
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.credentials.1)
+                                .hint_text("Encryption Key")
+                                .desired_width(150.)
+                                .password(true),
+                        );
+                        ui.label("SECRET");
+                    });
+
+                    egui::ComboBox::from_label("View")
+                        .selected_text(format!("{:?}", self.viewmode))
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.viewmode, ViewMode::Board, "Board");
+                            ui.selectable_value(&mut self.viewmode, ViewMode::List, "List");
+                            ui.selectable_value(&mut self.viewmode, ViewMode::Graph, "Graph");
+                        });
+
+                    match &mut self.storage_mode {
+                        StorageMode::Local { path } => {
+                            let mut s = path.to_string_lossy().to_string();
+                            if ui.text_edit_singleline(&mut s).changed() {
+                                *path = PathBuf::from(s);
                             }
+                        }
+                        StorageMode::JsonBin {
+                            masterkey: _,
+                            bin_id,
+                        } => {
+                            if bin_id.is_none() {
+                                ui.label("Your data has never been published.");
 
-                            if ui.button("Publish as new").clicked() {
-                                if let Err(e) = self.storage_mode.save_notes(
-                                    &self.notes,
-                                    &self.credentials,
-                                    &self.channels,
-                                    true
-                                ) {
-                                    self.toasts.error(format!("Error publishing notes! {e}"));
+                                if ui.button("Restore from username").clicked() {
+                                    *bin_id = Some(self.credentials.0.clone());
+
+                                    _ = self
+                                        .storage_mode
+                                        .load_notes(&self.credentials, &self.channels);
+                                }
+
+                                if ui.button("Publish as new").clicked() {
+                                    if let Err(e) = self.storage_mode.save_notes(
+                                        &self.notes,
+                                        &self.credentials,
+                                        &self.channels,
+                                        true,
+                                    ) {
+                                        self.toasts.error(format!("Error publishing notes! {e}"));
+                                    }
+                                }
+                            } else {
+                                ui.label(format!("Bin ID: {}", bin_id.clone().unwrap_or_default()));
+                                if ui.button("Copy to clipboard").clicked() {
+                                    ui.output_mut(|o| {
+                                        o.copied_text = bin_id.clone().unwrap_or_default()
+                                    });
                                 }
                             }
-                        } else {
-                            ui.label(format!("Bin ID: {}", bin_id.clone().unwrap_or_default()));
-                            if ui.button("Copy to clipboard").clicked() {
-                                ui.output_mut(|o| {
-                                    o.copied_text = bin_id.clone().unwrap_or_default()
-                                });
-                            }
+                        }
+                    }
+
+                    global_dark_light_mode_buttons(ui);
+
+                    ui.checkbox(&mut self.ui_state.scratchpad_enabled, "Scratchpad");
+                    ui.checkbox(&mut self.ui_state.tags_enabled, "Tags");
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    ui.checkbox(&mut self.always_on_top, "Always on top");
+
+                    ui.add_space(ui.available_height());
+                });
+                r.response.sense = Sense::click_and_drag();
+
+                if r.response.clicked_elsewhere() {
+                    let pos = ui.ctx().input(|r| r.pointer.hover_pos());
+                    if let Some(pos) = pos {
+                        if pos.x > 50. || pos.y > 50. {
+                            self.ui_state.settings_enabled = false;
                         }
                     }
                 }
-
-                global_dark_light_mode_buttons(ui);
-
-                ui.checkbox(&mut self.ui_state.scratchpad_enabled, "Scratchpad");
-                ui.checkbox(&mut self.ui_state.tags_enabled, "Tags");
-                ui.checkbox(&mut self.always_on_top, "Always on top");
             });
         }
 
@@ -515,13 +531,6 @@ impl eframe::App for MeteoraApp {
                         self.toasts.error(format!("Can't load notes: {e}"));
                     }
                 }
-            }
-
-            if self.notes.is_empty() {
-                let logo_size = 300.;
-                let top = Pos2::new(250., 50.);
-                egui::Image::new(egui::include_image!("../assets/maskable_icon_x512.png"))
-                    .paint_at(ui, Rect::from_min_max(top, top + Vec2::splat(logo_size)));
             }
 
             match self.viewmode {
