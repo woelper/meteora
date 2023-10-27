@@ -153,7 +153,9 @@ impl MeteoraApp {
         cc.egui_ctx.set_style(style);
 
         if let Some(storage) = cc.storage {
-            return eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+            let s: Self = eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
+            _ = s.storage_mode.load_notes(&s.credentials, &s.channels);
+            return s;
         }
 
         Default::default()
