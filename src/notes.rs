@@ -156,16 +156,13 @@ pub fn color_from_tag(tag: &str) -> Color32 {
     // let g = colorgrad::rainbow();
 
     let g = colorgrad::CustomGradient::new()
-    .html_colors(&["gold", "hotpink", "darkturquoise", "seagreen"])
-    .build().unwrap();
+        .html_colors(&["gold", "hotpink", "darkturquoise", "seagreen"])
+        .build()
+        .unwrap();
 
     let c = g.at(rng.gen_range(0.0..1.0));
 
-    Color32::from_rgb(
-        (c.r * 255.) as u8,
-        (c.g * 255.) as u8,
-        (c.b * 255.) as u8,
-    )
+    Color32::from_rgb((c.r * 255.) as u8, (c.g * 255.) as u8, (c.b * 255.) as u8)
 }
 
 pub fn link_text(raw_link: &str) -> &str {
@@ -187,5 +184,4 @@ pub fn readable_text(color: &Color32) -> Color32 {
         Color32::from_rgb(230, 230, 230)
     }
     // Color32::from_rgb(255-color.r(), 255-color.g(), 255-color.b())
-    
 }

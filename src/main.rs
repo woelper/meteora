@@ -9,7 +9,9 @@ fn main() -> eframe::Result<()> {
 
     let native_options = eframe::NativeOptions {
         always_on_top: true,
-        icon_data: Some(IconData::try_from_png_bytes(include_bytes!("../assets/icon-256.png")).unwrap()),
+        icon_data: Some(
+            IconData::try_from_png_bytes(include_bytes!("../assets/icon-256.png")).unwrap(),
+        ),
         ..Default::default()
     };
 

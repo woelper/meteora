@@ -37,7 +37,7 @@ impl StorageMode {
         notes: &BTreeMap<u128, Note>,
         credentials: &(String, String),
         channels: &Channels,
-        manual_save: bool
+        manual_save: bool,
     ) -> Result<()> {
         let id_sender = channels.id_channel.0.clone();
         let msg_sender = channels.msg_channel.0.clone();
@@ -49,7 +49,6 @@ impl StorageMode {
                     _ = write(path, enc);
                     if manual_save {
                         _ = msg_sender.send(Message::Info("Saved notes!".into()));
-
                     }
                 }
             }
