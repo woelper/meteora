@@ -1,6 +1,5 @@
 use chrono::NaiveDate;
 use egui::Color32;
-use log::info;
 use rand::prelude::*;
 use rand_chacha::ChaCha20Rng;
 use std::collections::BTreeSet;
@@ -35,17 +34,18 @@ pub struct Note {
 
 impl Note {
     pub fn new() -> Self {
-        let mut rng = ChaCha20Rng::from_entropy();
+        // let mut rng = ChaCha20Rng::from_entropy();
         let mut n = Self::default();
         let time = chrono::Utc::now().timestamp_micros();
         n.id = time as u128;
         n.text = "".to_string();
         n.created = chrono::Utc::now().date_naive();
-        n.color = [
-            rng.gen_range(0..255),
-            rng.gen_range(0..255),
-            rng.gen_range(0..255),
-        ];
+        // n.color = [
+        //     rng.gen_range(0..255),
+        //     rng.gen_range(0..255),
+        //     rng.gen_range(0..255),
+        // ];
+        n.color = [200, 200, 200];
         n
     }
 

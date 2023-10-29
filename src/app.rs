@@ -1,8 +1,7 @@
 use std::{
     collections::BTreeMap,
     path::PathBuf,
-    sync::mpsc::{channel, Receiver, Sender},
-    time::Duration,
+    sync::mpsc::{channel, Receiver, Sender}
 };
 
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note, StorageMode};
@@ -13,7 +12,7 @@ use egui::{
 };
 use egui_graphs::{Graph, GraphView};
 use egui_notify::Toasts;
-use log::{debug, error, info};
+use log::{error, info};
 use petgraph::{stable_graph::StableGraph, Directed};
 
 // use egui_commonmark::*;
