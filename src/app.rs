@@ -187,6 +187,9 @@ impl eframe::App for MeteoraApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         use egui_phosphor::regular::*;
 
+        #[cfg(feature = "demo")]
+        ctx.request_repaint();
+
         if let Ok(id) = self.channels.id_channel.1.try_recv() {
             self.credentials.0 = id.clone();
             match &mut self.storage_mode {

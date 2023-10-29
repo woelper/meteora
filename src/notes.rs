@@ -64,37 +64,26 @@ impl Note {
                 // remaining: -4
 
                 let panic_range = (24 * 5) as f32;
-                let delta = start
-                    .signed_duration_since(chrono::Utc::now().date_naive())
-                    .num_days();
-
                 let mut remaining_hours = 0.0;
-
-                println!("days {delta}");
 
                 for d in start.iter_days().step_by(days.max(1) as usize) {
                     if d > chrono::Utc::now().date_naive() {
                         println!("Next is {}", d);
                         remaining_hours = (d
                             .signed_duration_since(chrono::Utc::now().date_naive())
-                            .num_hours() as f32).min(panic_range);
+                            .num_hours() as f32)
+                            .min(panic_range);
+                        #[cfg(feature = "demo")]
+                        {
+                            remaining_hours = ((chrono::Utc::now().timestamp_millis() / 100)
+                                % panic_range as i64)
+                                as f32;
+                        }
                         break;
                     }
                 }
 
-                // let delta = if delta.is_positive() {delta.abs()} else {
-                //     if days == 0 {
-                //         0
-                //     } else {
-
-                //         delta.abs() % days as i64
-                //     }
-                // } as f32;
                 let weight = 1. - (remaining_hours / panic_range);
-                // println!("weight {weight}, rem {delta}");
-
-                // 96 / 120
-                // println!("remainung minutes: {:?} {weight}", remaining);
 
                 println!("weight {weight}, rem {remaining_hours}");
                 println!("now {}", chrono::Utc::now().timestamp() % 80);
@@ -107,9 +96,9 @@ impl Note {
                 let remaining_hours = date
                     .signed_duration_since(chrono::Utc::now().date_naive())
                     .num_hours() as f32;
-                // #[cfg(debug_assertions)]
-                // let remaining_hours = ((chrono::Utc::now().timestamp_millis() / 200) % panic_range as i64)
-                // as f32 ;
+                #[cfg(feature = "demo")]
+                let remaining_hours =
+                    ((chrono::Utc::now().timestamp_millis() / 100) % panic_range as i64) as f32;
                 let weight = 1. - (remaining_hours / panic_range);
                 println!("weight {weight}, rem {remaining_hours}");
                 println!("now {}", chrono::Utc::now().timestamp() % 80);
