@@ -52,16 +52,67 @@ impl Note {
     pub fn get_final_prio(&self) -> f32 {
         match self.deadline {
             Deadline::Eternal => self.priority,
-            Deadline::Periodic { start, days } => self.priority,
+            Deadline::Periodic { start, days } => {
+                // this is the alerting range - the hours in a work week. Anything later is not affecting prio.
+                // TODO later this should be configurable
+
+                // it's Monday, start was last Friday, days is 3.
+                // remaining = 3
+                // mod days: 0
+
+                // it's Monday, start is next Friday, days is 4.
+                // remaining: -4
+
+                let panic_range = (24 * 5) as f32;
+                let delta = start
+                    .signed_duration_since(chrono::Utc::now().date_naive())
+                    .num_days();
+
+                let mut remaining_hours = 0.0;
+
+                println!("days {delta}");
+
+                for d in start.iter_days().step_by(days.max(1) as usize) {
+                    if d > chrono::Utc::now().date_naive() {
+                        println!("Next is {}", d);
+                        remaining_hours = (d
+                            .signed_duration_since(chrono::Utc::now().date_naive())
+                            .num_hours() as f32).min(panic_range);
+                        break;
+                    }
+                }
+
+                // let delta = if delta.is_positive() {delta.abs()} else {
+                //     if days == 0 {
+                //         0
+                //     } else {
+
+                //         delta.abs() % days as i64
+                //     }
+                // } as f32;
+                let weight = 1. - (remaining_hours / panic_range);
+                // println!("weight {weight}, rem {delta}");
+
+                // 96 / 120
+                // println!("remainung minutes: {:?} {weight}", remaining);
+
+                println!("weight {weight}, rem {remaining_hours}");
+                println!("now {}", chrono::Utc::now().timestamp() % 80);
+                self.priority + weight
+            }
             Deadline::Fixed(date) => {
                 // this is the alerting range - the hours in a work week. Anything later is not affecting prio.
                 // TODO later this should be configurable
                 let panic_range = (24 * 5) as f32;
-                let remaining = date
+                let remaining_hours = date
                     .signed_duration_since(chrono::Utc::now().date_naive())
                     .num_hours() as f32;
-                let weight = 1. - (remaining / panic_range);
-
+                // #[cfg(debug_assertions)]
+                // let remaining_hours = ((chrono::Utc::now().timestamp_millis() / 200) % panic_range as i64)
+                // as f32 ;
+                let weight = 1. - (remaining_hours / panic_range);
+                println!("weight {weight}, rem {remaining_hours}");
+                println!("now {}", chrono::Utc::now().timestamp() % 80);
                 // 96 / 120
                 // println!("remainung minutes: {:?} {weight}", remaining);
                 self.priority + weight
