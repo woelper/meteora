@@ -68,6 +68,8 @@ pub struct MeteoraApp {
     always_on_top: bool,
     /// How data is stored
     storage_mode: StorageMode,
+
+    saved_profiles: BTreeMap<String, StorageMode>,
     #[serde(skip)]
     toasts: Toasts,
     #[serde(skip)]
@@ -244,6 +246,28 @@ impl eframe::App for MeteoraApp {
                     });
                     ui.separator();
 
+                    if ui.button("Save profile").clicked() {
+                        let key = match &self.storage_mode {
+                            StorageMode::Local { path } => path.to_string_lossy().to_string(),
+                            StorageMode::JsonBin { bin_id, .. } => {
+                                bin_id.clone().unwrap_or_default()
+                            }
+                        };
+
+                        self.saved_profiles.insert(key, self.storage_mode.clone());
+                    }
+
+                    if ui.button("New profile").clicked() {
+                        _ = self.storage_mode.save_userdata(
+                            &self.userdata,
+                            &self.credentials,
+                            &self.channels,
+                            false,
+                        );
+                        self.storage_mode = Default::default();
+                        self.userdata = Default::default();
+                    }
+
                     egui::ComboBox::from_label("Storage")
                         .selected_text(format!("{:?}", self.storage_mode))
                         .show_ui(ui, |ui| {
@@ -264,6 +288,28 @@ impl eframe::App for MeteoraApp {
                                 "JsonBin",
                             );
                         });
+
+                    if !self.saved_profiles.is_empty() {
+                        egui::ComboBox::from_label("Saved profiles")
+                            .selected_text("Select saved profile")
+                            .show_ui(ui, |ui| {
+                                for (n, p) in &self.saved_profiles {
+                                    if ui.button(format!("{n}")).clicked() {
+                                        _ = self.storage_mode.save_userdata(
+                                            &self.userdata,
+                                            &self.credentials,
+                                            &self.channels,
+                                            false,
+                                        );
+                                        self.storage_mode = p.clone();
+
+                                        _ = self
+                                            .storage_mode
+                                            .load_userdata(&self.credentials, &self.channels);
+                                    }
+                                }
+                            });
+                    }
 
                     ui.horizontal(|ui| {
                         if ui.button("SAVE").clicked() {
@@ -362,7 +408,9 @@ impl eframe::App for MeteoraApp {
                     ui.checkbox(&mut self.always_on_top, "Always on top");
 
                     if ui.button("sds").clicked() {
-                        let notes: Notes = serde_json::from_reader(std::fs::File::open("debug.json").unwrap()).unwrap();
+                        let notes: Notes =
+                            serde_json::from_reader(std::fs::File::open("debug.json").unwrap())
+                                .unwrap();
                         self.userdata.notes = notes;
                     }
 
@@ -441,7 +489,8 @@ impl eframe::App for MeteoraApp {
 
                 ui.horizontal_wrapped(|ui| {
                     let all_used_tags = self
-                        .userdata.notes
+                        .userdata
+                        .notes
                         .iter()
                         .flat_map(|(_, n)| &n.tags)
                         .collect::<Vec<_>>();
@@ -531,7 +580,6 @@ impl eframe::App for MeteoraApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // Offer restore fuctionality if local
-
 
             match self.viewmode {
                 ViewMode::Board => {
@@ -715,7 +763,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
         crate::Deadline::Eternal => {}
         crate::Deadline::Periodic { start, days } => {
             ui.add(egui_extras::DatePickerButton::new(start));
-            ui.add(egui::Slider::new(days, 0..=10000).text("days offset"));
+            ui.add(egui::Slider::new(days, 1..=100).text("days offset"));
         }
         crate::Deadline::Fixed(date) => {
             ui.add(egui_extras::DatePickerButton::new(date));

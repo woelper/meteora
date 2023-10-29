@@ -4,14 +4,11 @@ use ehttp::headers;
 use log::info;
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 use serde_json::json;
-use std::{collections::BTreeMap, fs::write, path::PathBuf};
+use std::{fs::write, path::PathBuf};
 
-use crate::{
-    app::{Channels, Message, Notes, UserData},
-    Note,
-};
+use crate::app::{Channels, Message, UserData};
 
-#[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq)]
+#[derive(serde::Deserialize, serde::Serialize, PartialEq, Eq, Ord, PartialOrd, Clone)]
 pub enum StorageMode {
     Local {
         path: PathBuf,
@@ -24,8 +21,10 @@ pub enum StorageMode {
 
 impl std::fmt::Debug for StorageMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            StorageMode::Local { .. } => write!(f, "Local"),
+        match self {
+            StorageMode::Local { path } => {
+                write!(f, "Local {}", path.to_string_lossy().to_string())
+            }
             StorageMode::JsonBin { .. } => write!(f, "JsonBin"),
         }
     }
@@ -166,8 +165,10 @@ impl StorageMode {
                     match notes_from_response(result, &credentials) {
                         Ok(userdata) => {
                             // let n = decrypt_notes(&String::from_utf8_lossy(&resp.bytes), &credentials).unwrap();
-                            _ = msg_sender
-                                .send(Message::Info(format!("Loaded {} notes", userdata.notes.len())));
+                            _ = msg_sender.send(Message::Info(format!(
+                                "Loaded {} notes",
+                                userdata.notes.len()
+                            )));
                             _ = userdata_sender.send(userdata);
                         }
                         Err(e) => {
@@ -175,27 +176,6 @@ impl StorageMode {
                         }
                     }
                 });
-
-                // let client = reqwest::blocking::Client::new();
-                // let res = client
-                //     .get(bin_url)
-                //     .header("X-Master-Key", masterkey.clone())
-                //     .send()?;
-                // if !res.status().is_success() {
-                //     bail!("Error {:?}", res.text())
-                // }
-                // let n: serde_json::Value = res.json()?;
-                // let decrypted_notes = decrypt_notes(
-                //     n.as_object()
-                //         .context("notes must be obj")?
-                //         .get("encrypted")
-                //         .context("There must be an 'encrypted' key")?
-                //         .as_str()
-                //         .context("The value must be string")?,
-                //     credentials,
-                // )?;
-
-                // let n: BTreeMap<u128, Note> = serde_json::from_value(n)?;
                 Ok(())
             }
         }
@@ -205,7 +185,7 @@ impl StorageMode {
 impl Default for StorageMode {
     fn default() -> Self {
         StorageMode::Local {
-            path: PathBuf::from("backup.json"),
+            path: PathBuf::from("meteora.json"),
         }
     }
 }
@@ -214,6 +194,7 @@ pub fn decrypt_notes(raw_notes: &str, credentials: &(String, String)) -> Result<
     // encrypt using key
     let mc = new_magic_crypt!(&credentials.1, 256);
     let d = mc.decrypt_base64_to_string(raw_notes)?;
+    #[cfg(debug_assertions)]
     dbg!("decrypted with ", credentials);
     Ok(serde_json::from_str(&d)?)
 }
