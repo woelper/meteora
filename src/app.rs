@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeMap,
     path::PathBuf,
-    sync::mpsc::{channel, Receiver, Sender}
+    sync::mpsc::{channel, Receiver, Sender},
 };
 
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note, StorageMode};
@@ -43,13 +43,20 @@ pub const GAMMA_MULT: f32 = 0.8;
 
 pub type Notes = BTreeMap<u128, Note>;
 
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(default)] // if we add new fields, give them default values when deserializing old state
+pub struct UserData {
+    /// All notes
+    pub notes: Notes,
+    pub tags: Vec<String>,
+    pub scratchpad: ScratchPad,
+}
+
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
 pub struct MeteoraApp {
-    /// All notes
-    notes: Notes,
-    tags: Vec<String>,
+    userdata: UserData,
     active_tags: HashSet<String>,
     active_note: Option<u128>,
     /// Authentication/encryption
@@ -68,11 +75,10 @@ pub struct MeteoraApp {
     #[serde(skip)]
     graph: Option<Graph<String, (), Directed>>,
     ui_state: UiState,
-    scratchpad: ScratchPad,
 }
 
 pub struct Channels {
-    pub note_channel: (Sender<Notes>, Receiver<Notes>),
+    pub userdata_channel: (Sender<UserData>, Receiver<UserData>),
     pub id_channel: (Sender<String>, Receiver<String>),
     pub msg_channel: (Sender<Message>, Receiver<Message>),
 }
@@ -80,7 +86,7 @@ pub struct Channels {
 impl Default for Channels {
     fn default() -> Self {
         Self {
-            note_channel: channel(),
+            userdata_channel: channel(),
             id_channel: channel(),
             msg_channel: channel(),
         }
@@ -153,7 +159,7 @@ impl MeteoraApp {
 
         if let Some(storage) = cc.storage {
             let s: Self = eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
-            _ = s.storage_mode.load_notes(&s.credentials, &s.channels);
+            _ = s.storage_mode.load_userdata(&s.credentials, &s.channels);
             return s;
         }
 
@@ -165,10 +171,12 @@ impl eframe::App for MeteoraApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
         {
-            if let Err(e) =
-                self.storage_mode
-                    .save_notes(&self.notes, &self.credentials, &self.channels, false)
-            {
+            if let Err(e) = self.storage_mode.save_userdata(
+                &self.userdata,
+                &self.credentials,
+                &self.channels,
+                false,
+            ) {
                 error!("{e}")
             }
         }
@@ -188,8 +196,8 @@ impl eframe::App for MeteoraApp {
             }
         }
 
-        if let Ok(notes) = self.channels.note_channel.1.try_recv() {
-            self.notes = notes;
+        if let Ok(userdata) = self.channels.userdata_channel.1.try_recv() {
+            self.userdata = userdata;
         }
         if let Ok(msg) = self.channels.msg_channel.1.try_recv() {
             match msg {
@@ -259,8 +267,8 @@ impl eframe::App for MeteoraApp {
 
                     ui.horizontal(|ui| {
                         if ui.button("SAVE").clicked() {
-                            _ = self.storage_mode.save_notes(
-                                &self.notes,
+                            _ = self.storage_mode.save_userdata(
+                                &self.userdata,
                                 &self.credentials,
                                 &self.channels,
                                 true,
@@ -270,7 +278,7 @@ impl eframe::App for MeteoraApp {
                         if ui.button("RESTORE").clicked() {
                             _ = self
                                 .storage_mode
-                                .load_notes(&self.credentials, &self.channels);
+                                .load_userdata(&self.credentials, &self.channels);
                         }
                     });
 
@@ -321,12 +329,12 @@ impl eframe::App for MeteoraApp {
 
                                     _ = self
                                         .storage_mode
-                                        .load_notes(&self.credentials, &self.channels);
+                                        .load_userdata(&self.credentials, &self.channels);
                                 }
 
                                 if ui.button("Publish as new").clicked() {
-                                    if let Err(e) = self.storage_mode.save_notes(
-                                        &self.notes,
+                                    if let Err(e) = self.storage_mode.save_userdata(
+                                        &self.userdata,
                                         &self.credentials,
                                         &self.channels,
                                         true,
@@ -353,6 +361,11 @@ impl eframe::App for MeteoraApp {
                     #[cfg(not(target_arch = "wasm32"))]
                     ui.checkbox(&mut self.always_on_top, "Always on top");
 
+                    if ui.button("sds").clicked() {
+                        let notes: Notes = serde_json::from_reader(std::fs::File::open("debug.json").unwrap()).unwrap();
+                        self.userdata.notes = notes;
+                    }
+
                     ui.add_space(ui.available_height());
                 });
                 r.response.sense = Sense::click_and_drag();
@@ -369,19 +382,19 @@ impl eframe::App for MeteoraApp {
         }
 
         if self.ui_state.scratchpad_enabled {
-            egui::SidePanel::left("right_panel").show(ctx, |ui| {
+            egui::SidePanel::left("scratchpad").show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.heading(NOTEPAD);
                     ui.label("SCRATCH")
                 });
                 ui.separator();
                 if bare_button(FILE_PLUS, ui).clicked() {
-                    self.scratchpad.sections.push("".into());
+                    self.userdata.scratchpad.sections.push("".into());
                 }
 
                 let mut remove: Option<usize> = None;
 
-                for (i, section) in self.scratchpad.sections.iter_mut().enumerate() {
+                for (i, section) in self.userdata.scratchpad.sections.iter_mut().enumerate() {
                     egui::CollapsingHeader::new(
                         section.lines().next().unwrap_or("New scratch".into()),
                     )
@@ -400,7 +413,7 @@ impl eframe::App for MeteoraApp {
                                 {
                                     let mut n = Note::new();
                                     n.text = section.clone();
-                                    self.notes.insert(n.id, n);
+                                    self.userdata.notes.insert(n.id, n);
                                     remove = Some(i);
                                 }
 
@@ -413,7 +426,7 @@ impl eframe::App for MeteoraApp {
                 }
 
                 if let Some(remove) = remove {
-                    self.scratchpad.sections.remove(remove);
+                    self.userdata.scratchpad.sections.remove(remove);
                 }
             });
         }
@@ -428,11 +441,11 @@ impl eframe::App for MeteoraApp {
 
                 ui.horizontal_wrapped(|ui| {
                     let all_used_tags = self
-                        .notes
+                        .userdata.notes
                         .iter()
                         .flat_map(|(_, n)| &n.tags)
                         .collect::<Vec<_>>();
-                    for tag in &self.tags {
+                    for tag in &self.userdata.tags {
                         // Hide tags that are unused.
                         if !all_used_tags.contains(&tag) {
                             continue;
@@ -477,20 +490,20 @@ impl eframe::App for MeteoraApp {
 
                 ui.collapsing("Edit", |ui| {
                     if ui.button("Add tag").clicked() {
-                        self.tags.push("New Tag".into());
+                        self.userdata.tags.push("New Tag".into());
                     }
 
                     egui::ScrollArea::horizontal().show(ui, |ui| {
                         let mut tag_index_to_delete: Option<usize> = None;
 
-                        for (i, tag) in &mut self.tags.iter_mut().enumerate() {
+                        for (i, tag) in &mut self.userdata.tags.iter_mut().enumerate() {
                             ui.horizontal(|ui| {
                                 if ui
                                     .button("🗑")
                                     .on_hover_text("Delete this tag from list and all notes.")
                                     .clicked()
                                 {
-                                    for note in self.notes.values_mut() {
+                                    for note in self.userdata.notes.values_mut() {
                                         note.tags.remove(tag);
                                     }
                                     tag_index_to_delete = Some(i);
@@ -498,7 +511,7 @@ impl eframe::App for MeteoraApp {
                                 let old_tag = tag.clone();
                                 if ui.text_edit_singleline(tag).changed() {
                                     // If a tag is renamed, we need to rename it in all notes.
-                                    for note in self.notes.values_mut() {
+                                    for note in self.userdata.notes.values_mut() {
                                         if note.tags.contains(&old_tag) {
                                             note.tags.remove(&old_tag);
                                             note.tags.insert(tag.clone());
@@ -509,7 +522,7 @@ impl eframe::App for MeteoraApp {
                         }
 
                         if let Some(i) = tag_index_to_delete {
-                            self.tags.remove(i);
+                            self.userdata.tags.remove(i);
                         }
                     });
                 });
@@ -519,20 +532,6 @@ impl eframe::App for MeteoraApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Offer restore fuctionality if local
 
-            #[cfg(not(target_arch = "wasm32"))] // no File->Quit on web pages!
-            if self.notes.is_empty() && ui.button("load notes").clicked() {
-                match self
-                    .storage_mode
-                    .load_notes(&self.credentials, &self.channels)
-                {
-                    Ok(_) => {
-                        self.toasts.info("Loaded notes");
-                    }
-                    Err(e) => {
-                        self.toasts.error(format!("Can't load notes: {e}"));
-                    }
-                }
-            }
 
             match self.viewmode {
                 ViewMode::Board => {
@@ -548,12 +547,12 @@ impl eframe::App for MeteoraApp {
                     if self.graph.is_none() {
                         let mut g: StableGraph<String, ()> = StableGraph::new();
                         let mut added = vec![];
-                        for note in self.notes.values() {
+                        for note in self.userdata.notes.values() {
                             if !added.contains(&note.id) {
                                 let a = g.add_node(note.get_title().into());
                                 added.push(note.id);
                                 for c in &note.depends {
-                                    if let Some(depend) = self.notes.get(c) {
+                                    if let Some(depend) = self.userdata.notes.get(c) {
                                         let b = g.add_node(depend.get_title().into());
                                         g.add_edge(a, b, ());
                                         added.push(*c);
@@ -615,7 +614,7 @@ impl eframe::App for MeteoraApp {
                 let mut n = Note::new();
                 n.tags = self.active_tags.iter().cloned().collect();
                 self.active_note = Some(n.id);
-                self.notes.insert(n.id, n);
+                self.userdata.notes.insert(n.id, n);
             }
 
             // Draw black background if editing note
@@ -636,7 +635,7 @@ impl eframe::App for MeteoraApp {
 
         if let Some(id) = self.active_note {
             // clean invalid id (because of deletion)
-            if !self.notes.contains_key(&id) {
+            if !self.userdata.notes.contains_key(&id) {
                 self.active_note = None;
             }
 
@@ -648,7 +647,7 @@ impl eframe::App for MeteoraApp {
                 )
                 .show(ctx, |ui| {
                     ui.vertical_centered_justified(|ui| {
-                        edit_note(ui, &id, &mut self.tags, &mut self.notes);
+                        edit_note(ui, &id, &mut self.userdata.tags, &mut self.userdata.notes);
 
                         if ui.button("Close").clicked() {
                             self.active_note = None;
@@ -966,7 +965,7 @@ fn draw_note_add_button(ui: &mut Ui) -> Response {
 }
 
 fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
-    let mut v = Vec::from_iter(state.notes.clone());
+    let mut v = Vec::from_iter(state.userdata.notes.clone());
     v.sort_by(|(_, a), (_, b)| b.get_final_prio().total_cmp(&a.get_final_prio()));
 
     egui::ScrollArea::horizontal()
@@ -995,11 +994,11 @@ fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
                                 {
                                     continue;
                                 }
-                                draw_note(ui, id, &state.notes, &mut state.active_note);
+                                draw_note(ui, id, &state.userdata.notes, &mut state.active_note);
                                 // Safety: if note has an unknown tag, add it.
                                 for tag in &note.tags {
-                                    if !state.tags.contains(tag) {
-                                        state.tags.push(tag.clone());
+                                    if !state.userdata.tags.contains(tag) {
+                                        state.userdata.tags.push(tag.clone());
                                     }
                                 }
                             }
@@ -1011,7 +1010,7 @@ fn boardview(ui: &mut Ui, state: &mut MeteoraApp) {
 }
 
 fn listview(ui: &mut Ui, state: &mut MeteoraApp) {
-    let mut v = Vec::from_iter(state.notes.clone());
+    let mut v = Vec::from_iter(state.userdata.notes.clone());
     v.sort_by(|(_, a), (_, b)| b.get_final_prio().total_cmp(&a.get_final_prio()));
 
     egui::ScrollArea::vertical()
@@ -1031,12 +1030,12 @@ fn listview(ui: &mut Ui, state: &mut MeteoraApp) {
                         continue;
                     }
 
-                    draw_list_note(ui, id, &state.notes, &mut state.active_note);
+                    draw_list_note(ui, id, &state.userdata.notes, &mut state.active_note);
 
                     // Safety: if note has an unknown tag, add it.
                     for tag in &note.tags {
-                        if !state.tags.contains(tag) {
-                            state.tags.push(tag.clone());
+                        if !state.userdata.tags.contains(tag) {
+                            state.userdata.tags.push(tag.clone());
                         }
                     }
                 }

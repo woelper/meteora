@@ -7,7 +7,7 @@ use serde_json::json;
 use std::{collections::BTreeMap, fs::write, path::PathBuf};
 
 use crate::{
-    app::{Channels, Message, Notes},
+    app::{Channels, Message, Notes, UserData},
     Note,
 };
 
@@ -32,9 +32,9 @@ impl std::fmt::Debug for StorageMode {
 }
 
 impl StorageMode {
-    pub fn save_notes(
+    pub fn save_userdata(
         &mut self,
-        notes: &BTreeMap<u128, Note>,
+        userdata: &UserData,
         credentials: &(String, String),
         channels: &Channels,
         manual_save: bool,
@@ -42,10 +42,9 @@ impl StorageMode {
         let id_sender = channels.id_channel.0.clone();
         let msg_sender = channels.msg_channel.0.clone();
         match self {
-            StorageMode::Local { path } =>
-            {
+            StorageMode::Local { path } => {
                 #[cfg(not(target_arch = "wasm32"))]
-                if let Ok(enc) = encrypt_notes(notes, credentials) {
+                if let Ok(enc) = encrypt_userdata(&userdata, credentials) {
                     _ = write(path, enc);
                     if manual_save {
                         _ = msg_sender.send(Message::Info("Saved notes!".into()));
@@ -55,7 +54,7 @@ impl StorageMode {
             StorageMode::JsonBin { masterkey, bin_id } => {
                 // rewrite notes so we can encrypt them
                 let notes = json!({
-                    "encrypted": encrypt_notes(notes, credentials)?
+                    "encrypted": encrypt_userdata(&userdata, credentials)?
                 });
 
                 let url = "https://api.jsonbin.io/v3/b";
@@ -121,18 +120,21 @@ impl StorageMode {
         Ok(())
     }
 
-    pub fn load_notes(&self, credentials: &(String, String), channels: &Channels) -> Result<()> {
-        let note_sender = channels.note_channel.0.clone();
+    pub fn load_userdata(&self, credentials: &(String, String), channels: &Channels) -> Result<()> {
+        let userdata_sender = channels.userdata_channel.0.clone();
         let msg_sender = channels.msg_channel.0.clone();
         match self {
             // Disk mode
             StorageMode::Local { path } => {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    let decrypted_notes = std::fs::read_to_string(path)?;
-                    let notes = decrypt_notes(&decrypted_notes, credentials)?;
-                    _ = msg_sender.send(Message::Info(format!("Loaded {} notes", notes.len())));
-                    _ = note_sender.send(notes);
+                    let decrypted_userdata = std::fs::read_to_string(path)?;
+                    let userdata = decrypt_notes(&decrypted_userdata, credentials)?;
+                    _ = msg_sender.send(Message::Info(format!(
+                        "Loaded {} notes",
+                        userdata.notes.len()
+                    )));
+                    _ = userdata_sender.send(userdata);
                     Ok(())
                 }
                 #[cfg(target_arch = "wasm32")]
@@ -162,11 +164,11 @@ impl StorageMode {
                 let credentials = credentials.clone();
                 ehttp::fetch(request, move |result: ehttp::Result<ehttp::Response>| {
                     match notes_from_response(result, &credentials) {
-                        Ok(notes) => {
+                        Ok(userdata) => {
                             // let n = decrypt_notes(&String::from_utf8_lossy(&resp.bytes), &credentials).unwrap();
                             _ = msg_sender
-                                .send(Message::Info(format!("Loaded {} notes", notes.len())));
-                            _ = note_sender.send(notes);
+                                .send(Message::Info(format!("Loaded {} notes", userdata.notes.len())));
+                            _ = userdata_sender.send(userdata);
                         }
                         Err(e) => {
                             _ = msg_sender.send(Message::err(&e.to_string()));
@@ -208,10 +210,7 @@ impl Default for StorageMode {
     }
 }
 
-pub fn decrypt_notes(
-    raw_notes: &str,
-    credentials: &(String, String),
-) -> Result<BTreeMap<u128, Note>> {
+pub fn decrypt_notes(raw_notes: &str, credentials: &(String, String)) -> Result<UserData> {
     // encrypt using key
     let mc = new_magic_crypt!(&credentials.1, 256);
     let d = mc.decrypt_base64_to_string(raw_notes)?;
@@ -219,13 +218,10 @@ pub fn decrypt_notes(
     Ok(serde_json::from_str(&d)?)
 }
 
-pub fn encrypt_notes(
-    notes: &BTreeMap<u128, Note>,
-    credentials: &(String, String),
-) -> Result<String> {
+pub fn encrypt_userdata(userdata: &UserData, credentials: &(String, String)) -> Result<String> {
     // encrypt using key
     let mc = new_magic_crypt!(&credentials.1, 256);
-    Ok(mc.encrypt_str_to_base64(serde_json::to_string(notes)?))
+    Ok(mc.encrypt_str_to_base64(serde_json::to_string(userdata)?))
 }
 
 fn id_from_response(result: ehttp::Result<ehttp::Response>) -> Result<String> {
@@ -253,7 +249,7 @@ fn id_from_response(result: ehttp::Result<ehttp::Response>) -> Result<String> {
 fn notes_from_response(
     result: ehttp::Result<ehttp::Response>,
     credentials: &(String, String),
-) -> Result<Notes> {
+) -> Result<UserData> {
     let resp = result.map_err(|e| anyhow!(e))?;
     // println!("res {}", res.status_text);
 
