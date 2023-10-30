@@ -413,15 +413,15 @@ impl eframe::App for MeteoraApp {
                     #[cfg(debug_assertions)]
                     {
                         if ui.button("restore from debug save").clicked() {
-                            let notes: Notes =
+                            let userdata: UserData =
                                 serde_json::from_reader(std::fs::File::open("debug.json").unwrap())
                                     .unwrap();
-                            self.userdata.notes = notes;
+                            self.userdata = userdata;
                         }
                         if ui.button("save to debug file").clicked() {
                             let _ = serde_json::to_writer_pretty(
                                 std::fs::File::create("debug.json").unwrap(),
-                                &self.userdata.notes,
+                                &self.userdata,
                             )
                             .unwrap();
                         }
@@ -442,12 +442,23 @@ impl eframe::App for MeteoraApp {
             });
         }
 
-        if self.ui_state.scratchpad_enabled {
-            egui::SidePanel::left("scratchpad").show(ctx, |ui| {
+        egui::SidePanel::left("scratchpad")
+            .width_range(0.0..=1000.)
+            .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.heading(NOTEPAD);
-                    ui.label("SCRATCH")
+
+                    if bare_button_sized(NOTEPAD, 20., ui).clicked() {
+                        self.ui_state.scratchpad_enabled = !self.ui_state.scratchpad_enabled;
+                    }
+
+                    if !self.ui_state.scratchpad_enabled {
+                        return;
+                    }
+                    ui.label("SCRATCH");
                 });
+                if !self.ui_state.scratchpad_enabled {
+                    return;
+                }
                 ui.separator();
                 if bare_button(FILE_PLUS, ui).clicked() {
                     self.userdata.scratchpad.sections.push("".into());
@@ -490,14 +501,23 @@ impl eframe::App for MeteoraApp {
                     self.userdata.scratchpad.sections.remove(remove);
                 }
             });
-        }
 
-        if self.ui_state.tags_enabled {
-            egui::SidePanel::left("side_panel").show(ctx, |ui| {
+            egui::SidePanel::left("side_panel")
+            .width_range(0.0..=1000.)
+            
+            .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.heading(TAG);
-                    ui.label("TAGS")
+                    if bare_button_sized(TAG, 20., ui).clicked() {
+                        self.ui_state.tags_enabled = !self.ui_state.tags_enabled;
+                    }
+                    if !self.ui_state.tags_enabled {
+                        return;
+                    }
+                    ui.label("TAGS");
                 });
+                if !self.ui_state.tags_enabled {
+                    return;
+                }
                 ui.separator();
 
                 ui.horizontal_wrapped(|ui| {
@@ -589,7 +609,6 @@ impl eframe::App for MeteoraApp {
                     });
                 });
             });
-        }
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // Offer restore fuctionality if local
@@ -1106,4 +1125,8 @@ fn listview(ui: &mut Ui, state: &mut MeteoraApp) {
 
 pub fn bare_button(text: impl Into<String>, ui: &mut Ui) -> Response {
     ui.add(egui::Button::new(RichText::new(text).size(30.)).frame(false))
+}
+
+pub fn bare_button_sized(text: impl Into<String>, size: f32, ui: &mut Ui) -> Response {
+    ui.add(egui::Button::new(RichText::new(text).size(size)).frame(false))
 }
