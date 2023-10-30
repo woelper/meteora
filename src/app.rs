@@ -410,11 +410,21 @@ impl eframe::App for MeteoraApp {
                     #[cfg(not(target_arch = "wasm32"))]
                     ui.checkbox(&mut self.always_on_top, "Always on top");
 
-                    if ui.button("sds").clicked() {
-                        let notes: Notes =
-                            serde_json::from_reader(std::fs::File::open("debug.json").unwrap())
-                                .unwrap();
-                        self.userdata.notes = notes;
+                    #[cfg(debug_assertions)]
+                    {
+                        if ui.button("restore from debug save").clicked() {
+                            let notes: Notes =
+                                serde_json::from_reader(std::fs::File::open("debug.json").unwrap())
+                                    .unwrap();
+                            self.userdata.notes = notes;
+                        }
+                        if ui.button("save to debug file").clicked() {
+                            let _ = serde_json::to_writer_pretty(
+                                std::fs::File::create("debug.json").unwrap(),
+                                &self.userdata.notes,
+                            )
+                            .unwrap();
+                        }
                     }
 
                     ui.add_space(ui.available_height());
