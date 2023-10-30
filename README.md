@@ -32,15 +32,19 @@ What works:
 ### TODO
 
 - [ ] show checkboxes in notes
+- [ ] better note hover interaction (links, checkboxes)
 - [ ] Visual cue for urgency (pulsate etc)
-- [ ] Add deadline, calendar, deadline type
+- [ ] Readable text in list view
+- [ ] Make note editing look nice
+- [X] Make scratch and tags collapsible
+- [ ] Scratch needs to scroll (or textedits)
 - [ ] Graph view
 - [ ] show progress based on checkboxes
 - [ ] Markup toggle or detection / bug: commonmark renders strangely.
 - [ ] Custom basic markup
-- [ ] Note color needs to come from theme
 - [ ] Deleting tag should reset active tag so notes are not empty
 - [ ] Generic edge connections
+- [X] Add deadline, calendar, deadline type
 - [X] better "add new tag" in note editor
 - [X] Draw dependencies
 - [X] Build with API secret
