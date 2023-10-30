@@ -139,7 +139,7 @@ impl StorageMode {
                 #[cfg(target_arch = "wasm32")]
                 {
                     // wasm should err here
-                    bail!("Could not load notes")
+                    anyhow::bail!("Could not load notes")
                 }
             }
             // JsonBin
