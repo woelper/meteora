@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeMap,
+    f64::consts::PI,
     path::PathBuf,
     sync::mpsc::{channel, Receiver, Sender},
 };
@@ -7,13 +8,15 @@ use std::{
 use crate::{color_from_tag, link_text, readable_text, Deadline, Note, StorageMode};
 use egui::{
     epaint::{ahash::HashSet, RectShape, Shadow, TextShape},
-    global_dark_light_mode_buttons, vec2, Color32, FontData, FontFamily, FontId, Id, Layout, Pos2,
-    Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape, Stroke, Ui, Vec2,
+    global_dark_light_mode_buttons, popup_below_widget, vec2, Color32, FontData, FontFamily,
+    FontId, Id, Layout, Pos2, Rect, Response, RichText, Rounding, SelectableLabel, Sense, Shape,
+    Stroke, Ui, Vec2,
 };
+use egui_dnd::dnd;
 use egui_graphs::{Graph, GraphView};
 use egui_notify::Toasts;
 use log::{error, info};
-use petgraph::{stable_graph::StableGraph, Directed};
+use petgraph::{stable_graph::StableGraph, visit::NodeIndexable, Directed};
 
 // use egui_commonmark::*;
 
@@ -30,6 +33,7 @@ pub struct UiState {
     #[serde(skip)]
     settings_enabled: bool,
     scratchpad_enabled: bool,
+    logbook_enabled: bool,
     tags_enabled: bool,
 }
 
@@ -50,6 +54,15 @@ pub struct UserData {
     pub notes: Notes,
     pub tags: Vec<String>,
     pub scratchpad: ScratchPad,
+    pub logbook: BTreeMap<chrono::NaiveDate, Vec<Note>>,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(default)] // if we add new fields, give them default values when deserializing old state
+pub struct LogItem {
+    /// All notes
+    pub text: String,
+    pub tags: Vec<String>,
 }
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
@@ -446,7 +459,6 @@ impl eframe::App for MeteoraApp {
             .width_range(0.0..=1000.)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-
                     if bare_button_sized(NOTEPAD, 20., ui).clicked() {
                         self.ui_state.scratchpad_enabled = !self.ui_state.scratchpad_enabled;
                     }
@@ -464,47 +476,123 @@ impl eframe::App for MeteoraApp {
                     self.userdata.scratchpad.sections.push("".into());
                 }
 
-                let mut remove: Option<usize> = None;
-
-                for (i, section) in self.userdata.scratchpad.sections.iter_mut().enumerate() {
-                    egui::CollapsingHeader::new(
-                        section.lines().next().unwrap_or("New scratch".into()),
-                    )
-                    .id_source(i)
-                    .show_unindented(ui, |ui| {
-                        ui.indent(i, |ui| {
-                            ui.style_mut().visuals.selection.stroke = Stroke::NONE;
-                            egui::TextEdit::multiline(section)
-                                .desired_width(f32::INFINITY)
-                                .hint_text("Enter some quick thoughts here!")
-                                .show(ui);
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    let mut remove: Option<usize> = None;
+                    let mut i = 0;
+                    dnd(ui, "dnd_example").show_vec(
+                        &mut self.userdata.scratchpad.sections,
+                        |ui, item, handle, state| {
                             ui.horizontal(|ui| {
-                                if bare_button(NOTE, ui)
-                                    .on_hover_text("Turn into note")
-                                    .clicked()
-                                {
-                                    let mut n = Note::new();
-                                    n.text = section.clone();
-                                    self.userdata.notes.insert(n.id, n);
-                                    remove = Some(i);
-                                }
+                                egui::CollapsingHeader::new(
+                                    item.lines().next().unwrap_or("New scratch".into()),
+                                )
+                                .id_source(i)
+                                .show_unindented(ui, |ui| {
+                                    ui.indent(i, |ui| {
+                                        ui.style_mut().visuals.selection.stroke = Stroke::NONE;
+                                        egui::TextEdit::multiline(item)
+                                            .desired_width(f32::INFINITY)
+                                            .hint_text("Enter some quick thoughts here!")
+                                            .show(ui);
+                                        ui.horizontal(|ui| {
+                                            if bare_button(NOTE, ui)
+                                                .on_hover_text("Turn into note")
+                                                .clicked()
+                                            {
+                                                let mut n = Note::new();
+                                                n.text = item.clone();
+                                                self.userdata.notes.insert(n.id, n);
+                                                remove = Some(i);
+                                            }
 
-                                if bare_button(TRASH, ui).on_hover_text("Delete").clicked() {
-                                    remove = Some(i);
-                                }
+                                            if bare_button(TRASH, ui)
+                                                .on_hover_text("Delete")
+                                                .clicked()
+                                            {
+                                                remove = Some(i);
+                                            }
+                                        });
+                                    });
+                                });
+                                ui.add_space(ui.available_width() - 30.);
+                                handle.ui(ui, |ui| {
+                                    ui.label(DOTS_SIX_VERTICAL);
+                                });
                             });
-                        });
-                    });
-                }
+                            i += 1;
+                        },
+                    );
 
-                if let Some(remove) = remove {
-                    self.userdata.scratchpad.sections.remove(remove);
-                }
+                    if let Some(remove) = remove {
+                        self.userdata.scratchpad.sections.remove(remove);
+                    }
+                });
             });
 
-            egui::SidePanel::left("side_panel")
+        egui::SidePanel::left("logbook")
             .width_range(0.0..=1000.)
-            
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    if bare_button_sized(NOTEBOOK, 20., ui).clicked() {
+                        self.ui_state.logbook_enabled = !self.ui_state.logbook_enabled;
+                    }
+
+                    if !self.ui_state.logbook_enabled {
+                        return;
+                    }
+                    ui.label("LOGBOOK");
+                });
+                if !self.ui_state.logbook_enabled {
+                    return;
+                }
+                ui.separator();
+                let current_date = chrono::Utc::now().date_naive();
+
+                if !self.userdata.logbook.contains_key(&current_date) {
+                    self.userdata
+                        .logbook
+                        .insert(current_date, vec![Note::new()]);
+                }
+
+                egui::ScrollArea::vertical().show(ui, |ui| {
+                    for (d, items) in self.userdata.logbook.iter_mut() {
+                        egui::CollapsingHeader::new(format!("{}", d))
+                            .default_open(d == &current_date)
+                            .show_unindented(ui, |ui| {
+                                if bare_button(FILE_PLUS, ui).clicked() {
+                                    items.push(Note::new());
+                                }
+                                let mut remove: Option<usize> = None;
+
+                                for (i, item) in items.iter_mut().enumerate() {
+                                    ui.horizontal(|ui| {
+                                    egui::TextEdit::multiline(&mut item.text).show(ui);
+                                        tag_ui(ui, item, &mut self.userdata.tags);
+                                        if ui.button("del").clicked() {
+                                            remove = Some(i);
+                                        }
+                                    });
+                                }
+                                if let Some(r) = remove {
+                                    items.remove(r);
+                                }
+
+                                ui.collapsing("Summary", |ui| {
+                                    let mut text = String::default();
+
+                                    for n in items.iter() {
+                                        text.push_str(&format!("\n- {}", n.text));
+                                    }
+
+                                    ui.label(text);
+                                });
+                            });
+                    }
+                });
+            });
+
+        egui::SidePanel::left("side_panel")
+            .width_range(0.0..=1000.)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     if bare_button_sized(TAG, 20., ui).clicked() {
@@ -644,46 +732,46 @@ impl eframe::App for MeteoraApp {
                     }
 
                     if let Some(g) = self.graph.as_mut() {
-                        ui.add(&mut GraphView::new(g).with_custom_node_draw(
-                            |ctx, n, meta, _style, l| {
-                                // lets draw a rect with label in the center for every node
+                        // ui.add(&mut GraphView::new(g).with_custom_node_draw(
+                        //     |ctx, n, meta, _style, l| {
+                        //         // lets draw a rect with label in the center for every node
 
-                                // find node center location on the screen coordinates
-                                let node_center_loc = n.screen_location(meta).to_pos2();
+                        //         // find node center location on the screen coordinates
+                        //         let node_center_loc = n.screen_location(meta).to_pos2();
 
-                                // find node radius accounting for current zoom level; we will use it as a reference for the rect and label sizes
-                                let rad = n.screen_radius(meta);
+                        //         // find node radius accounting for current zoom level; we will use it as a reference for the rect and label sizes
+                        //         let rad = n.screen_radius(meta);
 
-                                // first create rect shape
-                                let size = Vec2::new(rad * 1.5, rad * 1.5);
-                                let rect = Rect::from_center_size(node_center_loc, size);
-                                let shape_rect = Shape::rect_stroke(
-                                    rect,
-                                    Rounding::default(),
-                                    Stroke::new(1., n.color(ctx)),
-                                );
+                        //         // first create rect shape
+                        //         let size = Vec2::new(rad * 1.5, rad * 1.5);
+                        //         let rect = Rect::from_center_size(node_center_loc, size);
+                        //         let shape_rect = Shape::rect_stroke(
+                        //             rect,
+                        //             Rounding::default(),
+                        //             Stroke::new(1., n.color(ctx)),
+                        //         );
 
-                                // then create shape for the label placing it in the center of the rect
-                                let color = ctx.style().visuals.text_color();
-                                let galley = ctx.fonts(|f| {
-                                    f.layout_no_wrap(
-                                        n.data().unwrap().clone(),
-                                        FontId::new(rad, FontFamily::Monospace),
-                                        color,
-                                    )
-                                });
-                                // we need to offset a bit to place the label in the center of the rect
-                                let label_loc = Pos2::new(
-                                    node_center_loc.x - rad / 2.,
-                                    node_center_loc.y - rad / 2.,
-                                );
-                                let shape_label = TextShape::new(label_loc, galley);
+                        //         // then create shape for the label placing it in the center of the rect
+                        //         let color = ctx.style().visuals.text_color();
+                        //         let galley = ctx.fonts(|f| {
+                        //             f.layout_no_wrap(
+                        //                 n.data().unwrap().clone(),
+                        //                 FontId::new(rad, FontFamily::Monospace),
+                        //                 color,
+                        //             )
+                        //         });
+                        //         // we need to offset a bit to place the label in the center of the rect
+                        //         let label_loc = Pos2::new(
+                        //             node_center_loc.x - rad / 2.,
+                        //             node_center_loc.y - rad / 2.,
+                        //         );
+                        //         let shape_label = TextShape::new(label_loc, galley, Color32::BLACK);
 
-                                // add shapes to the drawing layers; the drawing process is happening in the widget lifecycle.
-                                l.add(shape_rect);
-                                l.add(shape_label);
-                            },
-                        ));
+                        //         // add shapes to the drawing layers; the drawing process is happening in the widget lifecycle.
+                        //         l.add(shape_rect);
+                        //         l.add(shape_label);
+                        //     },
+                        // ));
                     }
                 }
             }
@@ -808,42 +896,7 @@ fn edit_note(ui: &mut Ui, note_id: &u128, tags: &mut Vec<String>, notes: &mut No
         ui.color_edit_button_srgb(&mut note.color);
     }
 
-    ui.group(|ui| {
-        ui.allocate_space(vec2(ui.available_width(), 0.));
-        ui.horizontal_wrapped(|ui| {
-            ui.label("Tags:");
-            for tag in tags.iter() {
-                let contains = note.tags.contains(tag);
-                ui.style_mut().visuals.selection.bg_fill =
-                    color_from_tag(tag).gamma_multiply(GAMMA_MULT);
-                if ui.selectable_label(contains, tag.to_string()).clicked() {
-                    if contains {
-                        note.tags.remove(tag);
-                    } else {
-                        note.tags.insert(tag.clone());
-                    }
-                }
-            }
-        });
-
-        let id = Id::new("newtag");
-        if ui.button("Add tag...").clicked() {
-            ui.ctx()
-                .memory_mut(|w| w.data.insert_temp(id, "New Tag".to_string()));
-        }
-
-        let newtag = ui.ctx().memory_mut(|w| w.data.get_temp::<String>(id));
-        if let Some(tag) = newtag {
-            let mut tag = tag;
-            if ui.text_edit_singleline(&mut tag).changed() {
-                ui.ctx().memory_mut(|w| w.data.insert_temp(id, tag.clone()));
-            }
-            if ui.button("Save").clicked() {
-                tags.push(tag.clone());
-                ui.ctx().memory_mut(|w| w.data.clear());
-            }
-        }
-    });
+    tag_ui(ui, note, tags);
 
     ui.horizontal(|ui| {
         let note = notes.get_mut(note_id).unwrap();
@@ -927,19 +980,21 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
         shapes_to_draw.push(tag_shape)
     }
 
-    let shp = {
-        let shadow = Shadow::small_light();
-        let shadow = shadow.tessellate(rect, 5.0);
-        let shadow = Shape::Mesh(shadow);
-        shapes_to_draw.push(shadow);
-        Shape::Vec(shapes_to_draw)
-    };
+    let s = Shadow {
+        offset: Default::default(),
+        blur: 30.0,
+        spread: 5.0,
+        color: Color32::from_black_alpha(70),
+    }
+    .as_shape(rect, 4.0);
+    ui.painter().add(s);
 
-    ui.painter().add(shp);
+    ui.painter().add(shapes_to_draw);
 
     let mut sub_ui = ui.child_ui(
         rect.shrink(10.),
         Layout::left_to_right(egui::Align::TOP).with_main_wrap(true),
+        None,
     );
 
     // if note.contains_markdown() {
@@ -953,8 +1008,8 @@ fn draw_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut Optio
         egui::Label::new(
             RichText::new(&note.get_clean_text_truncated()).color(readable_text(&note.get_color())),
         )
-        .truncate(true)
-        .wrap(true),
+        .truncate()
+        .wrap(),
     );
 
     // sub_ui.label(
@@ -1002,7 +1057,7 @@ fn draw_list_note(ui: &mut Ui, note_id: &u128, notes: &Notes, active_note: &mut 
         ui.allocate_exact_size(vec2(ui.available_width(), 0.), Sense::click());
         ui.horizontal(|ui| {
             ui.label(note.get_title());
-            ui.add(egui::Label::new(RichText::new(note.get_excerpt()).size(10.)).truncate(true));
+            ui.add(egui::Label::new(RichText::new(note.get_excerpt()).size(10.)).truncate());
         });
         for d in &note.depends {
             if let Some(dependent) = notes.get(d) {
@@ -1129,4 +1184,60 @@ pub fn bare_button(text: impl Into<String>, ui: &mut Ui) -> Response {
 
 pub fn bare_button_sized(text: impl Into<String>, size: f32, ui: &mut Ui) -> Response {
     ui.add(egui::Button::new(RichText::new(text).size(size)).frame(false))
+}
+
+fn tag_ui(ui: &mut Ui, note: &mut Note, global_tags: &mut Vec<String>) {
+    let response = ui.button("Tags");
+    let popup_id = ui.make_persistent_id(note.id);
+    if response.clicked() {
+        ui.memory_mut(|mem| mem.toggle_popup(popup_id));
+    }
+    let below = egui::AboveOrBelow::Below;
+    let close_on_click_outside = egui::popup::PopupCloseBehavior::CloseOnClickOutside;
+    egui::popup::popup_above_or_below_widget(
+        ui,
+        popup_id,
+        &response,
+        below,
+        close_on_click_outside,
+        |ui| {
+            ui.set_min_width(600.0); // if you want to control the size
+
+            ui.group(|ui| {
+                ui.allocate_space(vec2(ui.available_width(), 0.));
+                ui.horizontal_wrapped(|ui| {
+                    for tag in global_tags.iter() {
+                        let contains = note.tags.contains(tag);
+                        ui.style_mut().visuals.selection.bg_fill =
+                            color_from_tag(tag).gamma_multiply(GAMMA_MULT);
+                        if ui.selectable_label(contains, tag.to_string()).clicked() {
+                            if contains {
+                                note.tags.remove(tag);
+                            } else {
+                                note.tags.insert(tag.clone());
+                            }
+                        }
+                    }
+                });
+
+                let id = Id::new("newtag");
+                if ui.button("Add tag...").clicked() {
+                    ui.ctx()
+                        .memory_mut(|w| w.data.insert_temp(id, "New Tag".to_string()));
+                }
+
+                let newtag = ui.ctx().memory_mut(|w| w.data.get_temp::<String>(id));
+                if let Some(tag) = newtag {
+                    let mut tag = tag;
+                    if ui.text_edit_singleline(&mut tag).changed() {
+                        ui.ctx().memory_mut(|w| w.data.insert_temp(id, tag.clone()));
+                    }
+                    if ui.button("Save").clicked() {
+                        global_tags.push(tag.clone());
+                        ui.ctx().memory_mut(|w| w.data.clear());
+                    }
+                }
+            });
+        },
+    );
 }

@@ -3,30 +3,34 @@ name = "meteora"
 version = "0.1.0"
 authors = ["Johann Woelper <woelper@gmail.com>"]
 edition = "2021"
-rust-version = "1.71"
+# rust-version = "1.71"
 description = "A note taking app"
 
 
 [dependencies]
-egui = "0.23"
-eframe = { version = "0.23", default-features = false, features = [
+egui = "0.29.1"
+eframe = { version = "0.29.1", default-features = false, features = [
     "accesskit",     # Make egui comptaible with screen readers. NOTE: adds a lot of dependencies.
     "default_fonts", # Embed the default egui fonts.
     "glow",          # Use the glow rendering backend. Alternative: "wgpu".
     "persistence",   # Enable restoring app state when restarting the app.
 ] }
 log = "0.4"
-egui_extras = { version = "0.23", features = ["datepicker", "all_loaders"] }
-egui-notify = "0.10"
+egui_extras = { version = "0.29.1", features = [
+    "datepicker",
+    "all_loaders",
+    "serde",
+] }
+egui-notify = "0.16.0"
 ehttp = "0.3"
 getrandom = { version = "0.2", features = ["js"] }
 
 chrono = { version = "0.4", features = ["wasmbind", "serde"] }
 rand = { version = "0.8" }
 rand_chacha = "0.3"
-egui_graphs = { version = "0.13", features = ["egui_persistence"]}
+egui_graphs = { version = "0.22.0", features = ["egui_persistence"] }
 petgraph = "0.6"
-egui-phosphor = "0.3"
+egui-phosphor = "0.7.3"
 
 
 # You only need serde if you want app persistence:
@@ -36,6 +40,7 @@ serde_json = "1"
 magic-crypt = "3.1.12"
 anyhow = "1"
 colorgrad = "0.6.2"
+egui_dnd = "0.10.0"
 
 [features]
 demo = []
@@ -50,7 +55,7 @@ wasm-bindgen-futures = "0.4"
 
 
 [profile.release]
-opt-level = 2 # fast and small wasm
+opt-level = 2     # fast and small wasm
 strip = true
 lto = true
 codegen-units = 1

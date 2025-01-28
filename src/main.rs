@@ -4,21 +4,21 @@
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result<()> {
-    use eframe::IconData;
+    use egui::IconData;
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let native_options = eframe::NativeOptions {
-        always_on_top: true,
-        icon_data: Some(
-            IconData::try_from_png_bytes(include_bytes!("../assets/icon-256.png")).unwrap(),
-        ),
+        // always_on_top: true,
+        // icon_data: Some(
+        //     IconData::try_from_png_bytes(include_bytes!("../assets/icon-256.png")).unwrap(),
+        // ),
         ..Default::default()
     };
 
     eframe::run_native(
         "Meteora",
         native_options,
-        Box::new(|cc| Box::new(meteora::MeteoraApp::new(cc))),
+        Box::new(|cc| Ok(Box::new(meteora::MeteoraApp::new(cc)))),
     )
 }
 
